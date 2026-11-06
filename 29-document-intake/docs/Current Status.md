@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 6 Nov 2026, 16:35 IST
+**Last updated:** 6 Nov 2026, 16:40 IST
 
 ## Right now
 
@@ -13,8 +13,9 @@
 | **Active branch** | `seat29/document-reader`, committed locally, not pushed. `Issues.md` is held back |
 | **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11), read-only client and write guard |
 | **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
-| **Known cause** | All 3 misses are credit notes labelled `CREDIT TOTAL`, which the frozen rules do not read. They left the total empty and went to a person |
-| **Next action** | Decide on a version 2 fix. The fair result above stays on record either way |
+| **Known cause** | All 3 misses were credit notes labelled `CREDIT TOTAL`, which the frozen rules could not read. They left the total empty and went to a person |
+| **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |
+| **Next action** | Send Rohan the accuracy report, and ask Priye for a new held-back set that includes vendor bills |
 
 ## Milestones
 
@@ -45,7 +46,9 @@
 
 ## Latest results
 
-**Unit tests:** 84 of 84 passed on Python 3.12 (6 Nov).
+**Unit tests:** 86 of 86 passed on Python 3.12 (6 Nov).
+
+**Version 2 on all 20 samples (commit `61b1f48`, not a fair test):** all 13 fields at 20/20, flags 19/20. The one flag difference is the extra `ambiguous_date_order`, which we keep on purpose. Proposed actions: 11 draft bills, 1 duplicate rejected, 5 rejected as not a bill, 3 credit notes for review.
 
 **Reader on samples 01 to 14:**
 
@@ -131,7 +134,8 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 | 4 | ~~Align the reader with the key and score 01 to 14~~ Done 6 Nov: 13 of 13 fields at 14/14 | Claude, at Sudip's request |
 | 5 | ~~Add flag scoring and freeze the rules~~ Done 6 Nov, commit `b4fe528` | Claude |
 | 6 | ~~Run 15 to 20 once, and score it~~ Done 6 Nov | Claude |
-| 6a | Decide whether to fix `CREDIT TOTAL` as version 2, and ask Priye for a new held-back set to test it fairly | Sudip, with Priye |
+| 6a | ~~Fix `CREDIT TOTAL` as version 2~~ Done 6 Nov, commit `61b1f48` | Claude |
+| 6b | Ask Priye for a new held-back set, including vendor bills, to test version 2 fairly | Sudip |
 | 7 | Send Rohan the accuracy table and flags before 15 Nov | Sudip, with Priye |
 | 8 | Post the Sunday update, first due 8 Nov | Sudip |
 
@@ -151,6 +155,7 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 6 Nov, 16:35 | Version 2 on all 20 samples, commit `61b1f48`, not a fair test | All 13 fields at 20/20, flags 19/20. 86 of 86 tests passed |
 | 6 Nov, 16:32 | **Fair test on samples 15 to 20, one run, rules at `b4fe528`** | 12 of 13 fields at 6/6, `total_stated` 3/6, flags 5/6. All 20: `total_stated` 17/20, flags 19/20, other fields 20/20 |
 | 6 Nov, 16:30 | Flag scoring added, samples 01 to 14 rescored | All 13 fields at 14/14, flags 14/14. 84 of 84 tests passed |
 | 6 Nov, 16:25 | First score on samples 01 to 14, at Sudip's request | 13 of 13 scored fields at 14/14. Tuning set, flags not scored |
