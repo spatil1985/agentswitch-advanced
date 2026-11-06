@@ -34,3 +34,25 @@ The tests fake every network call. The probe needs a token for each system, in t
 - `AuthError`: the token was rejected or has expired (it lasts 7 days). Log in again, once. Ten wrong passwords in 15 minutes lock the login.
 - `GuardRefused`: the guard is working and nothing was sent. Do not bypass it.
 - `ToolError` or `TransportError`: post the system, your login name, the exact request and the reply in the seat group. Leave out any password or token.
+
+## Reading documents
+Needs `pip install -r requirements.txt`. This works on local PDFs and does not use the platform.
+
+```
+python -m intake.extract local/samples/*.pdf --out local/predictions.json
+```
+
+Each document gets a type, its fields, flags, and a rule score from 0 to 1 (not a probability). The rules work out the type from who issued the document and who it is billed to, because a bill and our own sales invoice can both say TAX INVOICE. A stated total that does not add up is kept as stated and flagged. A missing value stays empty and is never guessed.
+
+Every result is a proposal, and a person approves any record. `needs_review` only marks what a person should look at first.
+
+Keep the output in `local/`, which is git-ignored, because it holds document data.
+
+## Scoring
+A person runs this, because the answer key must stay out of the agent's reach. Keep the key outside this repository. The scorer reads it from the zip in memory and prints totals and field names only, never an answer.
+
+```
+python -m intake.score --describe --key PATH/TO/KEY.zip
+python -m intake.score --labels --key PATH/TO/KEY.zip
+python -m intake.score local/predictions.json --key PATH/TO/KEY.zip
+```
