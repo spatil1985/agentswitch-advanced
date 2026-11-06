@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 6 Nov 2026, 16:25 IST
+**Last updated:** 6 Nov 2026, 16:35 IST
 
 ## Right now
 
@@ -12,8 +12,9 @@
 | **Overall** | On track, as long as we get the two approvals listed under Blockers |
 | **Active branch** | `seat29/document-reader`, committed locally, not pushed. `Issues.md` is held back |
 | **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11), read-only client and write guard |
-| **Accuracy** | **Tuning samples 01 to 14: 13 of 13 fields at 14/14.** The rules were built on these, so this is not a fair test. Flags are not scored. Fair test on 15 to 20 not run |
-| **Next action** | Add flag scoring, freeze the rules, then run samples 15 to 20 once |
+| **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
+| **Known cause** | All 3 misses are credit notes labelled `CREDIT TOTAL`, which the frozen rules do not read. They left the total empty and went to a person |
+| **Next action** | Decide on a version 2 fix. The fair result above stays on record either way |
 
 ## Milestones
 
@@ -32,7 +33,7 @@
 | Live login check | Built, in PR #11 | `intake/probe.py` |
 | Document reader | Built, committed locally | `intake/reader.py` |
 | Local extract command | Built, committed locally | `intake/extract.py` |
-| Accuracy scorer | Built, committed locally. Does not score flags yet | `intake/score.py` |
+| Accuracy scorer | Built, committed locally, scores flags | `intake/score.py` |
 | Docs | Committed locally, except `Issues.md` | `docs/` |
 | Collect from Drive, email and forms | **Not built** | |
 | Create drafts on the platform | **Not built**, needs approval | |
@@ -44,7 +45,7 @@
 
 ## Latest results
 
-**Unit tests:** 82 of 82 passed on Python 3.12 (6 Nov).
+**Unit tests:** 84 of 84 passed on Python 3.12 (6 Nov).
 
 **Reader on samples 01 to 14:**
 
@@ -52,32 +53,38 @@
 |---|---|
 | Documents read | 14 of 14 |
 | Types found | 12 vendor bills, 2 sales invoices |
-| Flags raised | 1 discount line, 1 duplicate, 1 foreign currency, 1 no due date, 1 tax exempt, 1 no tax charged, 1 total mismatch |
+| Flags raised | 1 discount line, 1 duplicate, 1 foreign currency, 1 no due date, 1 tax exempt, 1 total mismatch |
 | Key fields produced | 14 of 14 |
 | Check method | Exact match against the answer key. The scorer printed totals only |
 
-**Samples 15 to 20:** kept unopened as our fair test. We expect credit notes there, which the rules have never seen.
+**Accuracy per field (exact match, rules frozen at commit `b4fe528`):**
 
-**Accuracy per field (exact match):**
+| Field | Samples 01–14 (tuning set) | Samples 15–20 (fair test, one run) | All 20 |
+|---|---|---|---|
+| `counterparty_gstin` | 14/14 | 6/6 | 20/20 |
+| `counterparty_name` | 14/14 | 6/6 | 20/20 |
+| `currency` | 14/14 | 6/6 | 20/20 |
+| `doc_type` | 14/14 | 6/6 | 20/20 |
+| `due_date` | 14/14 | 6/6 | 20/20 |
+| `invoice_date` | 14/14 | 6/6 | 20/20 |
+| `invoice_number` | 14/14 | 6/6 | 20/20 |
+| `lines` | 14/14 | 6/6 | 20/20 |
+| `subtotal` | 14/14 | 6/6 | 20/20 |
+| `tax_rate_percent` | 14/14 | 6/6 | 20/20 |
+| `tax_total` | 14/14 | 6/6 | 20/20 |
+| `tax_type` | 14/14 | 6/6 | 20/20 |
+| **`total_stated`** | 14/14 | **3/6** | **17/20** |
+| `flags`, exact set per document | 14/14 | 5/6 | 19/20 |
 
-| Field | Samples 01–14 (tuning set) | Samples 15–20 (one run only) |
-|---|---|---|
-| `counterparty_gstin` | 14/14 | Not run |
-| `counterparty_name` | 14/14 | Not run |
-| `currency` | 14/14 | Not run |
-| `doc_type` | 14/14 | Not run |
-| `due_date` | 14/14 | Not run |
-| `invoice_date` | 14/14 | Not run |
-| `invoice_number` | 14/14 | Not run |
-| `lines` | 14/14 | Not run |
-| `subtotal` | 14/14 | Not run |
-| `tax_rate_percent` | 14/14 | Not run |
-| `tax_total` | 14/14 | Not run |
-| `tax_type` | 14/14 | Not run |
-| `total_stated` | 14/14 | Not run |
-| `flags` | Not scored | Not run |
+**Flags found across all 20:** duplicate 1 of 1, foreign currency 1 of 1, discount line 1 of 1, no due date 2 of 2, tax exempt 1 of 1, total mismatch 1 of 1. One extra flag was raised that is not in the key: `ambiguous_date_order`.
 
-These scores come from documents the rules were built on, so they do not predict accuracy on new documents. The set holds 20 documents, and a different held-back set may be used at review.
+**How to read this:**
+
+- The fair test is the honest number, but it is only 6 documents, all sales invoices and credit notes. No vendor bills were in it.
+- The tuning scores come from documents the rules were built on, so they do not predict accuracy on new documents.
+- `total_stated` missed on all 3 credit notes, which label their total `CREDIT TOTAL`. The total was left empty, confidence went to 0, and they went to a person. No value was invented.
+- The extra flag came from one document whose two dates can each be read day-first or month-first. Our reader flags that for a person. The key does not list it, so that document's flag set does not match exactly.
+- A different held-back set may be used at review.
 
 ## Platform facts
 
@@ -122,8 +129,9 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 | 2 | Tell Rohan the samples are already visible, and ask if `extract` may run on them | Sudip |
 | 3 | Submit the bugs in [Issues.md](Issues.md) | Sudip, with Priye |
 | 4 | ~~Align the reader with the key and score 01 to 14~~ Done 6 Nov: 13 of 13 fields at 14/14 | Claude, at Sudip's request |
-| 5 | Add flag scoring and settle the withheld flag label, then freeze the rules with a commit | Claude |
-| 6 | Run 15 to 20 once, and score it | Claude, once Sudip agrees |
+| 5 | ~~Add flag scoring and freeze the rules~~ Done 6 Nov, commit `b4fe528` | Claude |
+| 6 | ~~Run 15 to 20 once, and score it~~ Done 6 Nov | Claude |
+| 6a | Decide whether to fix `CREDIT TOTAL` as version 2, and ask Priye for a new held-back set to test it fairly | Sudip, with Priye |
 | 7 | Send Rohan the accuracy table and flags before 15 Nov | Sudip, with Priye |
 | 8 | Post the Sunday update, first due 8 Nov | Sudip |
 
@@ -143,6 +151,8 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 6 Nov, 16:32 | **Fair test on samples 15 to 20, one run, rules at `b4fe528`** | 12 of 13 fields at 6/6, `total_stated` 3/6, flags 5/6. All 20: `total_stated` 17/20, flags 19/20, other fields 20/20 |
+| 6 Nov, 16:30 | Flag scoring added, samples 01 to 14 rescored | All 13 fields at 14/14, flags 14/14. 84 of 84 tests passed |
 | 6 Nov, 16:25 | First score on samples 01 to 14, at Sudip's request | 13 of 13 scored fields at 14/14. Tuning set, flags not scored |
 | 6 Nov, 16:23 | Reader aligned with the key, samples 01 to 14 re-run | 82 of 82 tests passed, 14 of 14 key fields produced. Not scored yet |
 | 6 Nov, 16:22 | Scorer `--labels` on the answer key, at Sudip's request | Label lists only, nothing per document. 1 flag label withheld by the safeguard |
