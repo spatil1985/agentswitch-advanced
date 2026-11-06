@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 6 Nov 2026, 16:50 IST
+**Last updated:** 6 Nov 2026, 16:56 IST
 
 ## Right now
 
@@ -10,13 +10,14 @@
 |---|---|
 | **Phase** | First task, due 15 Nov 2026 |
 | **Overall** | On track, as long as we get the two approvals listed under Blockers |
-| **Active branch** | `seat29/document-reader`, committed locally, not pushed. `Issues.md` is held back |
+| **Active branch** | `seat29/document-reader`, pushed to our fork, no PR yet. It builds on PR #11. `Issues.md` is held back |
 | **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11), read-only client and write guard |
 | **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
 | **Known cause** | All 3 misses were credit notes labelled `CREDIT TOTAL`, which the frozen rules could not read. They left the total empty and went to a person |
 | **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |
 | **First task** | Reader and scores are done. Still missing: draft Bills on the platform, which need Rohan's permission |
 | **Report** | "Seat 29 First Task Accuracy Report" is drafted in Claude Docs. Confirm it was shared and sent |
+| **Bugs** | 15 reported on the platform by Sudip, all Received on 6 Nov, none triaged yet |
 | **Next action** | Send Rohan the report, and ask Priye for a new held-back set that includes vendor bills |
 
 ## Milestones
@@ -34,10 +35,10 @@
 |---|---|---|
 | Platform client, read-only write guard | Built, in PR #11 | `intake/mcp_client.py` |
 | Live login check | Built, in PR #11 | `intake/probe.py` |
-| Document reader | Built, committed locally | `intake/reader.py` |
-| Local extract command | Built, committed locally | `intake/extract.py` |
-| Accuracy scorer | Built, committed locally, scores flags | `intake/score.py` |
-| Docs | `Issues.md` is uncommitted and held back. This page and the guide have uncommitted updates | `docs/` |
+| Document reader | Built, pushed to our fork | `intake/reader.py` |
+| Local extract command | Built, pushed to our fork | `intake/extract.py` |
+| Accuracy scorer | Built, pushed to our fork, scores flags | `intake/score.py` |
+| Docs | The guide is committed. `Issues.md` is uncommitted and held back | `docs/` |
 | Accuracy report for Rohan | Drafted, private until shared | Claude Docs |
 | Collect from Drive, email and forms | **Not built** | |
 | Create drafts on the platform | **Not built**, needs approval | |
@@ -133,7 +134,7 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 |---|---|---|
 | 1 | ~~Run `--describe` on the key~~ Done 6 Nov: 20 documents, 14 fields | Claude, at Sudip's request |
 | 2 | Tell Rohan the samples are already visible, and ask if `extract` may run on them | Sudip |
-| 3 | Submit the bugs in [Issues.md](Issues.md) | Sudip, with Priye |
+| 3 | ~~Submit the bugs in [Issues.md](Issues.md)~~ Done 6 Nov: all 15 Received. Now watch for triage replies | Sudip |
 | 4 | ~~Align the reader with the key and score 01 to 14~~ Done 6 Nov: 13 of 13 fields at 14/14 | Claude, at Sudip's request |
 | 5 | ~~Add flag scoring and freeze the rules~~ Done 6 Nov, commit `b4fe528` | Claude |
 | 6 | ~~Run 15 to 20 once, and score it~~ Done 6 Nov | Claude |
@@ -158,8 +159,10 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
-| 6 Nov, 16:50 | Docs updated with the solution details. No new run | The guide now covers fields, rules, flags, confidence, testing and lessons |
-| 6 Nov, 16:45 | Accuracy report drafted for Rohan | Fair-test numbers first, with the limits and the scorer disclosure |
+| 6 Nov, 16:56 | Branch `seat29/document-reader` pushed to our fork | Scan of all commits found no secrets, samples or answer key. No PR opened |
+| 6 Nov, 16:44 | Sudip reported 15 bugs on the platform | All show Received, none triaged yet |
+| 6 Nov, ~16:40 | Docs updated with the solution details. No new run | The guide now covers fields, rules, flags, confidence, testing and lessons |
+| 6 Nov, ~16:38 | Accuracy report drafted for Rohan | Fair-test numbers first, with the limits and the scorer disclosure |
 | 6 Nov, 16:35 | Version 2 on all 20 samples, commit `61b1f48`, not a fair test | All 13 fields at 20/20, flags 19/20. 86 of 86 tests passed |
 | 6 Nov, 16:32 | **Fair test on samples 15 to 20, one run, rules at `b4fe528`** | 12 of 13 fields at 6/6, `total_stated` 3/6, flags 5/6. All 20: `total_stated` 17/20, flags 19/20, other fields 20/20 |
 | 6 Nov, 16:30 | Flag scoring added, samples 01 to 14 rescored | All 13 fields at 14/14, flags 14/14. 84 of 84 tests passed |
