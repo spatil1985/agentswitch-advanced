@@ -17,13 +17,14 @@ def document(
     title="TAX INVOICE",
     seller="Teal Paper Mills",
     seller_gstin=VENDOR_OTHER_STATE,
+    seller_address="Some City",
     buyer="Our Buying Co",
     buyer_gstin=OWN_BUYER,
     header=("Invoice No: TP/001", "Date: 25 Sep 2026", "Due date: 25 Oct 2026"),
     rows=(("Paper", "2", "100.00", "200.00"), ("Ink", "1", "300.00", "300.00")),
     totals=("Subtotal", "Rs. 500.00", "IGST @ 18%", "Rs. 90.00", "TOTAL", "Rs. 590.00"),
 ):
-    lines = [seller, f"GSTIN: {seller_gstin}", "Some City", title, *header, "Bill to", buyer,
+    lines = [seller, f"GSTIN: {seller_gstin}", seller_address, title, *header, "Bill to", buyer,
              f"GSTIN: {buyer_gstin}", "Other City", "Description", "Qty", "Rate", "Amount"]
     for row in rows:
         lines.extend(row)
@@ -237,11 +238,6 @@ class FlagTests(unittest.TestCase):
         doc = parse(header=("Invoice No: TP/001", "Date: 10/04/2026", "Due date: 11/18/2026"))
         self.assertEqual(doc["invoice_date"], "2026-10-04")
 
-    def test_date_that_can_be_read_two_ways_is_flagged(self):
-        doc = parse(header=("Invoice No: TP/001", "Date: 04/10/2026"))
-        self.assertIn("ambiguous_date_order", doc["flags"])
-        self.assertLess(doc["confidence"], 0.85)
-
     def test_empty_text_goes_to_a_person(self):
         doc = parse_document("  \n ", own_gstins=OWN)
         self.assertIn("no_text_layer", doc["flags"])
@@ -254,7 +250,104 @@ class FlagTests(unittest.TestCase):
         tricked = parse_document(text, own_gstins=OWN)
         self.assertEqual(tricked["proposed_action"], clean["proposed_action"])
         self.assertEqual(tricked["total_stated"], clean["total_stated"])
-        self.assertEqual(tricked["flags"], clean["flags"])
+        self.assertEqual(tricked["invoice_number"], clean["invoice_number"])
+        # The values hold, a person is told, and the text does not reach the draft.
+        self.assertIn("instruction_like_text", tricked["flags"])
+        self.assertTrue(tricked["needs_review"])
+        self.assertNotIn("Ignore", tricked["lines"][0]["description"])
+
+
+class DateOrderTests(unittest.TestCase):
+    """04/10/2026 is 4 October day-first and 10 April month-first."""
+
+    AMBIGUOUS = ("Invoice No: TP/001", "Date: 04/10/2026")
+    DAY_FIRST, MONTH_FIRST = "2026-10-04", "2026-04-10"
+    NO_CURRENCY = ("Subtotal", "500.00", "IGST @ 18%", "90.00", "TOTAL", "590.00")
+    USD = ("Subtotal", "USD 500.00", "Export, no tax", "TOTAL", "USD 500.00")
+
+    def read(self, own_country=None, **kwargs):
+        kwargs.setdefault("header", self.AMBIGUOUS)
+        return parse_document(document(**kwargs), own_gstins=OWN, own_country=own_country)
+
+    def assert_settled(self, doc, expected):
+        self.assertEqual(doc["invoice_date"], expected)
+        self.assertNotIn("ambiguous_date_order", doc["flags"])
+
+    def assert_flagged(self, doc, expected):
+        self.assertEqual(doc["invoice_date"], expected)
+        self.assertIn("ambiguous_date_order", doc["flags"])
+        self.assertTrue(doc["needs_review"])
+        self.assertLess(doc["field_confidence"]["invoice_date"], 0.85)
+
+    def test_a_clear_date_beats_the_vendors_country(self):
+        doc = self.read(seller_gstin="", seller_address="Akron, OH 44301",
+                        header=("Invoice No: TP/001", "Date: 04/10/2026", "Due date: 18/11/2026"))
+        self.assert_settled(doc, self.DAY_FIRST)
+
+    def test_gstin_means_day_first_without_a_flag(self):
+        doc = self.read()
+        self.assert_settled(doc, self.DAY_FIRST)
+        self.assertEqual(doc["field_confidence"]["invoice_date"], 0.9)
+        self.assertFalse(doc["needs_review"])
+
+    def test_indian_vendor_billing_in_dollars_stays_day_first(self):
+        self.assert_settled(self.read(totals=self.USD), self.DAY_FIRST)
+
+    def test_gstin_beats_a_us_company(self):
+        self.assert_settled(self.read(own_country="US"), self.DAY_FIRST)
+
+    def test_indian_address_means_day_first(self):
+        self.assert_settled(self.read(seller_gstin="", seller_address="Pune, India"), self.DAY_FIRST)
+
+    def test_us_addresses_mean_month_first(self):
+        for address in ("Akron, OH 44301", "Akron, OH 44301-1234", "Akron, Ohio", "Fort Wayne, Indiana",
+                        "New York, USA", "Akron, U.S.A.", "Akron, US", "United States"):
+            doc = self.read(seller_gstin="", seller_address=address, own_country="IN")
+            self.assert_settled(doc, self.MONTH_FIRST)
+
+    def test_us_vendor_billing_in_rupees_stays_month_first(self):
+        doc = self.read(seller_gstin="", seller_address="Akron, Ohio")
+        self.assertEqual(doc["currency"], "INR")
+        self.assert_settled(doc, self.MONTH_FIRST)
+
+    def test_a_state_in_the_vendors_name_is_not_an_address(self):
+        doc = self.read(seller="Washington Tools", seller_gstin="")
+        self.assert_flagged(doc, self.DAY_FIRST)
+
+    def test_a_six_digit_indian_pincode_is_not_a_us_zip(self):
+        doc = self.read(seller_gstin="", seller_address="Pune, MH 411001")
+        self.assert_flagged(doc, self.DAY_FIRST)
+
+    def test_our_company_is_the_next_clue_and_is_flagged(self):
+        self.assert_flagged(self.read(seller_gstin="", own_country="US"), self.MONTH_FIRST)
+        self.assert_flagged(self.read(seller_gstin="", own_country="IN", totals=self.USD), self.DAY_FIRST)
+
+    def test_currency_is_the_last_clue_and_is_flagged(self):
+        self.assert_flagged(self.read(seller_gstin=""), self.DAY_FIRST)
+        self.assert_flagged(self.read(seller_gstin="", totals=self.USD), self.MONTH_FIRST)
+
+    def test_no_clue_leaves_the_date_empty(self):
+        doc = self.read(seller_gstin="", totals=self.NO_CURRENCY)
+        self.assert_flagged(doc, None)
+        self.assertNotIn("unparsed_date", doc["flags"])
+        self.assertEqual(doc["confidence"], 0.0)
+
+    def test_no_clue_keeps_a_date_written_in_words(self):
+        doc = self.read(seller_gstin="", totals=self.NO_CURRENCY,
+                        header=("Invoice No: TP/001", "Date: 25 Sep 2026", "Due date: 04/10/2026"))
+        self.assertEqual((doc["invoice_date"], doc["due_date"]), ("2026-09-25", None))
+        self.assertIn("ambiguous_date_order", doc["flags"])
+
+    def test_same_day_and_month_needs_no_clue(self):
+        for date_text in ("04/04/2026", "4/04/2026"):
+            doc = self.read(seller_gstin="", totals=self.NO_CURRENCY,
+                            header=("Invoice No: TP/001", f"Date: {date_text}"))
+            self.assert_settled(doc, "2026-04-04")
+
+    def test_impossible_date_is_still_unparsed(self):
+        doc = self.read(header=("Invoice No: TP/001", "Date: 31/02/2026"))
+        self.assertIsNone(doc["invoice_date"])
+        self.assertIn("unparsed_date", doc["flags"])
 
 
 class KeyFieldTests(unittest.TestCase):
