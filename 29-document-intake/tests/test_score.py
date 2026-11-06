@@ -82,6 +82,38 @@ class ScoreTests(unittest.TestCase):
                     self.assertNotIn(answer, output.getvalue())
 
 
+class FlagScoreTests(unittest.TestCase):
+    KEY = {
+        "sample_01": {"flags": ["no_due_date", "duplicate_of:sample_03"]},
+        "sample_02": {"flags": []},
+        "sample_03": {"flags": ["no_due_date"]},
+    }
+
+    def test_exact_sets_found_labels_and_extras_are_counted(self):
+        docs = [
+            {"source_file": "sample_01.pdf", "flags": ["no_due_date", "duplicate_of:sample_03"]},
+            {"source_file": "sample_02.pdf", "flags": ["our_extra"]},
+            {"source_file": "sample_03.pdf", "flags": []},
+        ]
+        flags = score(docs, self.KEY)["flags"]
+        self.assertEqual(flags["exact"], [1, 3])
+        self.assertEqual(flags["labels"]["no_due_date"], [1, 2])
+        self.assertEqual(flags["labels"]["duplicate_of:sample_##"], [1, 1])
+        self.assertEqual(flags["extra"], {"our_extra": 1})
+
+    def test_flag_output_masks_which_document_is_meant(self):
+        with tempfile.TemporaryDirectory() as folder:
+            key_path = Path(folder) / "key.json"
+            key_path.write_text(json.dumps(self.KEY), encoding="utf-8")
+            docs_path = Path(folder) / "docs.json"
+            docs_path.write_text(json.dumps([{"source_file": "sample_01.pdf", "flags": []}]), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                main([str(docs_path), "--key", str(key_path)])
+            self.assertIn("flags, documents with exactly the right set: 0/1", output.getvalue())
+            self.assertNotIn("sample_03", output.getvalue())
+
+
 class LabelTests(unittest.TestCase):
     KEY = {
         "sample_01": {"doc_type": "bill", "tax_type": "IGST", "flags": ["duplicate"], "seller": SECRET_NAME,
@@ -101,11 +133,13 @@ class LabelTests(unittest.TestCase):
         self.assertIn("duplicate", output)
         self.assertIn("description (str), qty (int), rate (float)", output)
 
-    def test_labels_that_may_hold_data_are_withheld_and_counted(self):
+    def test_digits_are_masked_and_long_labels_are_withheld(self):
         output = self.output()
         for hidden in ("total off by 100", "2026-01-02", "x" * 41):
             self.assertNotIn(hidden, output)
-        self.assertIn("withheld, may hold document data: 3", output)
+        self.assertIn("total off by ###", output)
+        self.assertIn("due on ####-##-##", output)
+        self.assertIn("withheld, may hold document data: 1", output)
 
     def test_flag_records_show_field_names_only(self):
         output = self.output()

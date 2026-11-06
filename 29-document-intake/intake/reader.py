@@ -78,7 +78,6 @@ REVIEW_FLAGS = frozenset({
     "unparsed_date",
     "ambiguous_date_order",
     "mixed_currencies",
-    "duplicate_document",
     "possible_duplicate",
 })
 
@@ -300,8 +299,6 @@ def _check_amounts(items: list[dict[str, Any]], totals: dict[str, Any],
             flags.append("tax_type_state_mismatch")
     if totals["exempt"]:
         flags.append("tax_exempt")
-    elif totals["no_tax"]:
-        flags.append("no_tax_charged")
     if any(row["amount"] < 0 for row in items):
         flags.append("has_discount_line")
     return flags
@@ -447,17 +444,16 @@ def mark_duplicates(docs: list[dict[str, Any]]) -> None:
         seller = doc.get("seller_gstin") or doc.get("seller_name")
         number_key = (seller, _number_key(doc["invoice_number"])) if doc.get("invoice_number") else None
         content_key = (seller, doc.get("invoice_date"), doc.get("total_stated"))
-        duplicate_of, flag = None, None
         if number_key and number_key in by_number:
-            duplicate_of, flag = by_number[number_key], "duplicate_document"
-        elif doc.get("invoice_date") and doc.get("total_stated") is not None and content_key in by_content:
-            duplicate_of, flag = by_content[content_key], "possible_duplicate"
-        if flag:
+            duplicate_of = by_number[number_key]
             doc["duplicate_of"] = duplicate_of
-            doc["flags"].append(flag)
+            doc["flags"].append("duplicate_of_" + duplicate_of.rsplit(".", 1)[0])
             doc["needs_review"] = True
-            if flag == "duplicate_document":
-                doc["proposed_action"] = "reject_duplicate"
+            doc["proposed_action"] = "reject_duplicate"
+        elif doc.get("invoice_date") and doc.get("total_stated") is not None and content_key in by_content:
+            doc["duplicate_of"] = by_content[content_key]
+            doc["flags"].append("possible_duplicate")
+            doc["needs_review"] = True
         if number_key:
             by_number.setdefault(number_key, doc["source_file"])
         by_content.setdefault(content_key, doc["source_file"])

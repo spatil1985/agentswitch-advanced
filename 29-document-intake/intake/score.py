@@ -23,8 +23,16 @@ ID_FIELDS = ("source_file", "file", "filename", "file_name", "sample", "document
 # Only these fields hold labels rather than document data.
 LABEL_FIELDS = ("doc_type", "tax_type", "flags")
 RECORD_LIST_FIELDS = ("lines",)
-# A label with digits or long text could hold a date, amount or name, so it is not printed.
-SAFE_LABEL = re.compile(r"^[A-Za-z_+/ -]{1,40}$")
+# A label could hold a date, amount or name. Digits are masked, and long or unusual text is not printed.
+SAFE_LABEL = re.compile(r"^[A-Za-z_+/ :=#.-]{1,40}$")
+
+
+def _printable_label(label: Any) -> Any:
+    """Return the label with digits masked, or None if it may hold document data."""
+    if not isinstance(label, str):
+        return None
+    masked = re.sub(r"\d", "#", label)
+    return masked if SAFE_LABEL.match(masked) else None
 
 
 def _stem(name: Any) -> str:
@@ -74,6 +82,7 @@ def score(docs: list[dict[str, Any]], key: dict[str, dict[str, Any]]) -> dict[st
     results: dict[str, list[int]] = {}
     not_predicted = set()
     scored = 0
+    flags = {"exact": [0, 0], "labels": {}, "extra": {}}
     for doc in docs:
         expected_row = key.get(_stem(doc.get("source_file", "")))
         if expected_row is None:
@@ -81,12 +90,27 @@ def score(docs: list[dict[str, Any]], key: dict[str, dict[str, Any]]) -> dict[st
         scored += 1
         for field, expected in expected_row.items():
             if field == "flags":
+                _score_flags(flags, doc.get("flags") or [], expected or [])
                 continue
             if field not in doc:
                 not_predicted.add(field)
             correct, total = results.get(field, [0, 0])
             results[field] = [correct + _same(doc.get(field), expected), total + 1]
-    return {"documents": scored, "fields": results, "not_predicted": sorted(not_predicted)}
+    return {"documents": scored, "fields": results, "not_predicted": sorted(not_predicted), "flags": flags}
+
+
+def _score_flags(flags: dict[str, Any], predicted: list[Any], expected: list[Any]) -> None:
+    """Add one document's flags. Names are stored masked, so they are safe to print."""
+    wanted, found = {str(item) for item in expected}, {str(item) for item in predicted}
+    flags["exact"][0] += wanted == found
+    flags["exact"][1] += 1
+    for label in wanted:
+        name = _printable_label(label) or "(label withheld)"
+        hit, total = flags["labels"].get(name, [0, 0])
+        flags["labels"][name] = [hit + (label in found), total + 1]
+    for label in found - wanted:
+        name = _printable_label(label) or "(label withheld)"
+        flags["extra"][name] = flags["extra"].get(name, 0) + 1
 
 
 def describe(key: dict[str, dict[str, Any]]) -> list[str]:
@@ -110,8 +134,8 @@ def labels(key: dict[str, dict[str, Any]]) -> list[str]:
             for item in value if isinstance(value, list) else [value]:
                 if isinstance(item, dict):
                     found.update(f"{name} (field)" for name in item)
-                elif isinstance(item, str) and SAFE_LABEL.match(item):
-                    found.add(item)
+                elif _printable_label(item):
+                    found.add(_printable_label(item))
                 elif item is not None:
                     withheld += 1
         lines.append(f"{field}: {', '.join(sorted(found)) or '(none)'}")
@@ -154,6 +178,13 @@ def main(argv: list[str]) -> int:
         print(f"  {field}: {correct}/{total}")
     if result["not_predicted"]:
         print(f"fields the reader does not produce yet: {', '.join(result['not_predicted'])}")
+    flags = result["flags"]
+    if flags["exact"][1]:
+        print(f"flags, documents with exactly the right set: {flags['exact'][0]}/{flags['exact'][1]}")
+        for name, (hit, total) in sorted(flags["labels"].items()):
+            print(f"  {name}: found {hit} of {total}")
+        for name, count in sorted(flags["extra"].items()):
+            print(f"  raised but not in the key, {name}: {count}")
     return 0
 
 

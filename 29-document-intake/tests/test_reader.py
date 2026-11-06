@@ -175,12 +175,11 @@ class FlagTests(unittest.TestCase):
         self.assertIn("no_due_date", doc["flags"])
 
     def test_no_tax_is_zero_and_flagged(self):
-        for wording, flag in (("Tax: exempt / not applicable", "tax_exempt"),
-                              ("Export, no tax", "no_tax_charged")):
+        for wording, is_exempt in (("Tax: exempt / not applicable", True), ("Export, no tax", False)):
             doc = parse(totals=("Subtotal", "Rs. 500.00", wording, "TOTAL", "Rs. 500.00"))
             self.assertEqual(doc["tax_total"], 0.0, wording)
             self.assertEqual((doc["tax_type"], doc["tax_rate_percent"]), ("NONE", 0), wording)
-            self.assertIn(flag, doc["flags"])
+            self.assertEqual("tax_exempt" in doc["flags"], is_exempt, wording)
             self.assertNotIn("total_mismatch", doc["flags"])
 
     def test_foreign_currency(self):
@@ -294,14 +293,14 @@ class DuplicateTests(unittest.TestCase):
             parse(header=("Inv. No.: TP/001", "Dt.: Sep 25, 2026", "Due on: Oct 25, 2026")),
             parse(header=("Invoice No: tp/001", "Date: 25/09/2026", "Due date: 25/10/2026")),
         )
-        self.assertNotIn("duplicate_document", first["flags"])
-        self.assertIn("duplicate_document", second["flags"])
+        self.assertEqual(first["flags"], [])
+        self.assertEqual(second["flags"], ["duplicate_of_doc0"])
         self.assertEqual(second["duplicate_of"], "doc0.pdf")
         self.assertEqual(second["proposed_action"], "reject_duplicate")
 
     def test_same_number_from_another_vendor_is_not_a_duplicate(self):
         _, second = self.batch(parse(), parse(seller_gstin="24FFFFF6666F1Z6"))
-        self.assertNotIn("duplicate_document", second["flags"])
+        self.assertNotIn("duplicate_of_doc0", second["flags"])
 
     def test_same_date_and_total_is_only_possible(self):
         _, second = self.batch(
