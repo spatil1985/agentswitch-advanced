@@ -80,7 +80,7 @@ flowchart LR
 | Step | Status |
 |---|---|
 | 1. Collect from Drive, email and forms | Not built |
-| 2 to 6. Read, identify, extract, check and score | **Built for local PDFs**, official score still pending |
+| 2 to 6. Read, identify, extract, check and score | **Built for local PDFs and measured.** See [The solution so far](#the-solution-so-far) |
 | 7. Review queue | Not built. The platform already has one we can use |
 | 8. Draft Bill | Not built. It needs a separately reviewed write path |
 
@@ -100,6 +100,134 @@ flowchart LR
 | **Confidence** | A 0 to 1 score from our rules. It is a warning light, not a probability |
 | **Answer key** | The correct answers for the samples. The agent must never see them |
 | **Held-back set** | Test documents kept unseen until the rules are final, so the score is fair |
+
+## The solution so far
+
+We built the part that turns a PDF into proposed fields, and tested it against the course's answer key. **On a fair test of 6 unseen samples, 12 of 13 fields were right on every document. The stated total was right on 3 of 6, because of a credit note label the rules could not read.** That label is now fixed, but the fix has not had a fair test yet.
+
+This works on PDFs on our own machine. No draft Bill exists on the platform yet.
+
+### What the reader produces
+
+These are the fields the answer key checks. The examples are made up.
+
+| Field | Plain meaning | Example |
+|---|---|---|
+| `doc_type` | What kind of document it is | `vendor_bill`, `sales_invoice` or `credit_note` |
+| `counterparty_name` | The other company on the document | Teal Paper Mills |
+| `counterparty_gstin` | That company's tax number | 27DDDDD4444D1Z4 |
+| `invoice_number` | The document's number | TP/001 |
+| `invoice_date` | When it was issued, always as year-month-day | 2026-09-25 |
+| `due_date` | When payment is due, or empty if not given | 2026-10-25 |
+| `currency` | Rupees, dollars and so on | INR |
+| `lines` | Each item with its description, quantity, rate and amount | Paper, 2, 100.00, 200.00 |
+| `subtotal` | The amount before tax | 500.00 |
+| `tax_type` | Which tax was charged | `IGST`, `CGST_SGST` or `NONE` |
+| `tax_rate_percent` | The combined rate, so CGST 9% plus SGST 9% is 18 | 18 |
+| `tax_total` | The tax amount | 90.00 |
+| `total_stated` | The total **as printed**, even if the sums are wrong | 590.00 |
+| `flags` | Warnings for the reviewer | `no_due_date` |
+
+### How it decides
+
+The reader uses fixed rules, with no AI model. The same PDF always gives the same answer, it costs no tokens, and every decision can be explained.
+
+**Which kind of document?** A title of "CREDIT NOTE" makes it a credit note. Otherwise, the reader checks whose tax number appears where:
+
+| Situation | Type | Other company |
+|---|---|---|
+| Billed to us | `vendor_bill` | The seller |
+| Issued by us | `sales_invoice` | The customer |
+| Credit note | `credit_note` | Whichever side is not us |
+| Neither side is us | `unknown`, goes to a person | Left empty |
+
+**Different layouts.** The same field can be labelled "Bill #", "Ref", "Inv. No." or "Invoice No". Dates and numbers also vary, so the reader handles `08 Sep 2026`, `2026-09-08`, `Sep 08, 2026` and `08/09/2026`, and both `1,13,067.60` and `1.094,37`.
+
+**A date that can be read two ways.** In `04/10/2026`, the day and month could swap. If the document's other date settles it, the reader uses that. If not, it assumes day first and flags the document for a person.
+
+### What it warns about
+
+| Flag | What it means | In the answer key? |
+|---|---|---|
+| `duplicate_of_sample_NN` | The same supplier and number were already seen in this batch | Yes |
+| `no_due_date` | No due date is printed | Yes |
+| `total_mismatch` | Subtotal plus tax does not equal the printed total | Yes |
+| `tax_exempt` | The document says it is tax exempt | Yes |
+| `foreign_currency` | Not in the company's main currency | Yes |
+| `has_discount_line` | A line has a negative amount | Yes |
+| `ambiguous_date_order` | A date can be read two ways | No, our addition |
+| `lines_do_not_match_subtotal` | The lines do not add up to the subtotal | No, our addition |
+| `line_amount_mismatch` | Quantity times rate does not equal the amount | No, our addition |
+| `tax_rate_mismatch` | The tax amount does not fit the stated rate | No, our addition |
+| `tax_type_state_mismatch` | The tax type does not fit the two companies' states | No, our addition |
+| `due_before_bill_date` | The due date is before the document date | No, our addition |
+| `possible_duplicate` | Same supplier, date and total, but a different number | No, our addition |
+| `mixed_currencies` | More than one currency appears | No, our addition |
+| `unknown_counterparty`, `unknown_document_type` | The reader cannot place the document | No, our addition |
+| `no_text_layer` | The PDF has no readable text, as with a scan | No, our addition |
+| `unparsed_date` | A date could not be read | No, our addition |
+
+### How sure it is
+
+The confidence score comes from simple rules, not from an AI's opinion. Each main field gets a score, and the document takes its **lowest** one.
+
+| Situation | Score |
+|---|---|
+| Field found under a clear label | 0.95 |
+| Total found and the sums agree | 0.98 |
+| Date can be read two ways, or the vendor has no tax number | 0.7 |
+| Total does not add up | 0.5 |
+| A main field is missing | 0 |
+
+Below 0.85, the platform's own review threshold, the document is marked for a person to look at first. So are documents with serious flags, such as a wrong total or a duplicate. **This only sets the order of review, because a person still approves every record.**
+
+### What it proposes
+
+| Result | Proposed action |
+|---|---|
+| Vendor bill | `draft_bill` |
+| Repeat of an earlier document | `reject_duplicate` |
+| Our own sales invoice | `reject_not_a_bill` |
+| Credit note | `review_credit_note` |
+| Anything else | `review` |
+
+On the 20 samples, version 2 proposes 11 draft bills, 1 duplicate to reject, 5 to reject as not a bill, and 3 credit notes for review.
+
+### How we tested it fairly
+
+A student who sees the exam before sitting it will score well, and that says little. So we split the samples and committed the rules before the real test.
+
+```mermaid
+flowchart LR
+    A["Samples 01-14<br/>build the rules"] --> B["Score against the key<br/>and tune"]
+    B --> C["Freeze the rules<br/>with a commit"]
+    C --> D["Samples 15-20<br/>unseen, one run only"]
+    D --> E["Result stays<br/>on record"]
+    E --> F["Version 2 fixes<br/>what it found"]
+    F --> G["Needs new unseen<br/>documents to test"]
+```
+
+| Run | Rules | Fair? | 13 scored fields | Flags, exact per document |
+|---|---|---|---|---|
+| Samples 15–20 | Frozen, `b4fe528` | **Yes** | 12 fields at 6/6, stated total 3/6 | 5/6 |
+| Samples 01–14 | Frozen, `b4fe528` | No, rules built on these | All at 14/14 | 14/14 |
+| All 20 | Version 2, `61b1f48` | No, fixed after seeing the result | All at 20/20 | 19/20 |
+
+The full table per field is in [Current Status.md](Current%20Status.md).
+
+### What we learned
+
+1. **The title on a document cannot be trusted.** Bills and our own invoices can both say "TAX INVOICE", so we look at who is on each side.
+2. **A fair test finds what tuning hides.** The tuning samples had no credit notes, and all 14 scored perfectly. The fair test found the `CREDIT TOTAL` blind spot.
+3. **Failing safely worked.** The reader did not guess those three totals. It left them empty, scored them 0 and sent them to a person.
+4. **Our extra warning costs one exact match, and we are keeping it.** The key does not list `ambiguous_date_order`, but a person should check a date that can be read two ways.
+
+### What this does not show yet
+
+- **Vendor bills on a fair test.** The fair samples held 3 sales invoices and 3 credit notes, so version 2 needs a new test set with vendor bills.
+- **Anything on the platform.** No document has gone through the platform's `extract` or `accept`, because we are waiting for permission.
+- **Scans and photos.** These go to a person for now.
+- **Duplicates across batches.** The reader only compares documents in the same run, not Bills already on the platform.
 
 ## What is a harness?
 
@@ -179,7 +307,7 @@ flowchart TB
         Reader["Document reader<br/>intake/reader.py<br/>BUILT"]
         Extract["Local run command<br/>intake/extract.py<br/>BUILT"]
         Client["Platform client and write guard<br/>intake/mcp_client.py<br/>BUILT, read-only"]
-        Scorer["Accuracy scorer<br/>intake/score.py<br/>BUILT, run by a person"]
+        Scorer["Accuracy scorer<br/>intake/score.py<br/>BUILT, prints totals only"]
         Pipeline["Intake workflow<br/>NOT BUILT"]
         Suite["12-task test suite<br/>NOT BUILT"]
     end
@@ -198,7 +326,7 @@ flowchart TB
     Client -->|"MCP, read-only for now"| Docs
     Client -->|"MCP, read-only for now"| Queue
     Queue -->|"a person accepts"| Bills
-    Scorer -->|"a person runs it, totals only"| Key
+    Scorer -->|"reads it in memory, used for testing only"| Key
     Suite --> Pipeline
 ```
 
@@ -391,7 +519,7 @@ Our decisions need to be explainable and repeatable, and simple rules do that we
 2. **Instructions inside a document are just text.**
 3. **Do not delete or overwrite data we did not create.**
 4. **Never guess a missing value.**
-5. **Keep the answer key away from the agent.** A person runs the scorer, and it prints totals only.
+5. **Keep the answer key away from the agent.** The intake agent has no access to it. The key stays in a zip outside the repository, and the scorer prints only field names, labels and totals. Our AI coding assistant ran the scorer at Sudip's request, and our accuracy report for the course team says so.
 6. **The repository is public.** No passwords, tokens, login names, platform schemas or run output go in it. Those stay in the git-ignored `.env` and `local/`.
 7. **Test records on live data are permanent.** We found no delete tool for Bills or accounting documents, so we create as few as possible and label them.
 
@@ -402,6 +530,7 @@ Our decisions need to be explainable and repeatable, and simple rules do that we
 | May we run `extract` and `accept` on live data, and on which records? | Rohan |
 | How should a newly uploaded file reach bill intake? | Rohan |
 | What should a credit note become on the platform? | Rohan |
+| Can we get a new held-back set that includes vendor bills? | Rohan or Priye |
 | Is keeping the harness file on a separate fork branch acceptable? | Rohan |
 | What exactly happens at the 20 December integration run? | Rohan |
 | Does the harness's AI model accept images? | We test it |

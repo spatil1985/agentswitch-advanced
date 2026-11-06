@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 6 Nov 2026, 16:40 IST
+**Last updated:** 6 Nov 2026, 16:50 IST
 
 ## Right now
 
@@ -15,7 +15,9 @@
 | **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
 | **Known cause** | All 3 misses were credit notes labelled `CREDIT TOTAL`, which the frozen rules could not read. They left the total empty and went to a person |
 | **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |
-| **Next action** | Send Rohan the accuracy report, and ask Priye for a new held-back set that includes vendor bills |
+| **First task** | Reader and scores are done. Still missing: draft Bills on the platform, which need Rohan's permission |
+| **Report** | "Seat 29 First Task Accuracy Report" is drafted in Claude Docs. Confirm it was shared and sent |
+| **Next action** | Send Rohan the report, and ask Priye for a new held-back set that includes vendor bills |
 
 ## Milestones
 
@@ -35,7 +37,8 @@
 | Document reader | Built, committed locally | `intake/reader.py` |
 | Local extract command | Built, committed locally | `intake/extract.py` |
 | Accuracy scorer | Built, committed locally, scores flags | `intake/score.py` |
-| Docs | Committed locally, except `Issues.md` | `docs/` |
+| Docs | `Issues.md` is uncommitted and held back. This page and the guide have uncommitted updates | `docs/` |
+| Accuracy report for Rohan | Drafted, private until shared | Claude Docs |
 | Collect from Drive, email and forms | **Not built** | |
 | Create drafts on the platform | **Not built**, needs approval | |
 | Review queue connection | **Not built** | |
@@ -136,7 +139,7 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 | 6 | ~~Run 15 to 20 once, and score it~~ Done 6 Nov | Claude |
 | 6a | ~~Fix `CREDIT TOTAL` as version 2~~ Done 6 Nov, commit `61b1f48` | Claude |
 | 6b | Ask Priye for a new held-back set, including vendor bills, to test version 2 fairly | Sudip |
-| 7 | Send Rohan the accuracy table and flags before 15 Nov | Sudip, with Priye |
+| 7 | Share the accuracy report and send it to Rohan before 15 Nov. It discloses that our coding assistant ran the scorer | Sudip, with Priye |
 | 8 | Post the Sunday update, first due 8 Nov | Sudip |
 
 ## How to score
@@ -155,6 +158,8 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 6 Nov, 16:50 | Docs updated with the solution details. No new run | The guide now covers fields, rules, flags, confidence, testing and lessons |
+| 6 Nov, 16:45 | Accuracy report drafted for Rohan | Fair-test numbers first, with the limits and the scorer disclosure |
 | 6 Nov, 16:35 | Version 2 on all 20 samples, commit `61b1f48`, not a fair test | All 13 fields at 20/20, flags 19/20. 86 of 86 tests passed |
 | 6 Nov, 16:32 | **Fair test on samples 15 to 20, one run, rules at `b4fe528`** | 12 of 13 fields at 6/6, `total_stated` 3/6, flags 5/6. All 20: `total_stated` 17/20, flags 19/20, other fields 20/20 |
 | 6 Nov, 16:30 | Flag scoring added, samples 01 to 14 rescored | All 13 fields at 14/14, flags 14/14. 84 of 84 tests passed |
