@@ -141,6 +141,18 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(doc["original_invoice"], "TP/001")
         self.assertEqual(doc["proposed_action"], "review_credit_note")
 
+    def test_credit_note_total_labels_are_read(self):
+        for label in ("CREDIT TOTAL", "Total Credit", "TOTAL"):
+            doc = parse(title="CREDIT NOTE", totals=("Subtotal", "Rs. 500.00", "IGST @ 18%", "Rs. 90.00",
+                                                     label, "Rs. 590.00"))
+            self.assertEqual(doc["total_stated"], 590.0, label)
+            self.assertEqual(doc["confidence"], 0.95, label)
+
+    def test_credit_total_that_does_not_add_up_is_flagged(self):
+        doc = parse(title="CREDIT NOTE", totals=("Subtotal", "Rs. 500.00", "IGST @ 18%", "Rs. 90.00",
+                                                 "CREDIT TOTAL", "Rs. 690.00"))
+        self.assertIn("total_mismatch", doc["flags"])
+
     def test_neither_side_is_ours(self):
         doc = parse(buyer_gstin=CUSTOMER)
         self.assertEqual(doc["doc_type"], "unknown")

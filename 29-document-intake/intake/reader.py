@@ -52,7 +52,7 @@ ORIGINAL_LABEL = re.compile(
     re.I,
 )
 SUBTOTAL_LABEL = re.compile(r"^(?:sub\s*-?\s*total|taxable\s+(?:value|amount)|net\s+total)\b", re.I)
-TOTAL_LABEL = re.compile(r"^(?:grand\s+)?total(?:\s+(?:amount|payable|due|credit))?\b", re.I)
+TOTAL_LABEL = re.compile(r"^(?:(?:grand|credit)\s+)?total(?:\s+(?:amount|payable|due|credit))?\b", re.I)
 TAX_LABEL = re.compile(r"^(CGST|SGST|UTGST|IGST|VAT|GST|Tax|Cess)\b(?:\s*@\s*([\d.]+)\s*%)?", re.I)
 NO_TAX = re.compile(r"\b(?:exempt|no\s+tax|not\s+applicable|nil[\s-]rated|zero[\s-]rated)\b", re.I)
 CURRENCIES = (
