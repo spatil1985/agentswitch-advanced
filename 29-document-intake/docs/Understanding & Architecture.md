@@ -2,7 +2,7 @@
 
 A plain-language guide to Seat 29, Document Intake. You do not need to know the code to read this.
 
-For where the work stands today, see [Current Status.md](Current%20Status.md). For bugs, see [Issues.md](Issues.md).
+For where the work stands today and everything still pending, see [Current Status.md](Current%20Status.md).
 
 ## The short version
 
@@ -80,7 +80,7 @@ flowchart LR
 | Step | Status |
 |---|---|
 | 1. Collect from Drive, email and forms | Not built |
-| 2 to 6. Read, identify, extract, check and score | **Built for local PDFs and measured.** See [The solution so far](#the-solution-so-far) |
+| 2 to 6. Read, identify, extract, check and score | **Built for local PDFs.** Accuracy was measured on version 2, and later versions have not been scored. See [The solution so far](#the-solution-so-far) |
 | 7. Review queue | Not built. The platform already has one we can use |
 | 8. Draft Bill | Not built. It needs a separately reviewed write path |
 
@@ -143,7 +143,18 @@ The reader uses fixed rules, with no AI model. The same PDF always gives the sam
 
 **Different layouts.** The same field can be labelled "Bill #", "Ref", "Inv. No." or "Invoice No". Dates and numbers also vary, so the reader handles `08 Sep 2026`, `2026-09-08`, `Sep 08, 2026` and `08/09/2026`, and both `1,13,067.60` and `1.094,37`.
 
-**A date that can be read two ways.** In `04/10/2026`, the day and month could swap. If the document's other date settles it, the reader uses that. If not, it assumes day first and flags the document for a person.
+**A date that can be read two ways.** `04/10/2026` means 4 October in India and April 10 in the US. The reader takes the strongest clue it can find:
+
+| Order | Clue | Reading | Flagged? |
+|---|---|---|---|
+| 1 | Another date on the document that can only be read one way, such as `18/11/2026` | That order | No |
+| 2 | The vendor has a GSTIN or an Indian address | Day first | No |
+| 3 | The vendor has a US address | Month first | No |
+| 4 | Our company's country, if the run was given it | That country's order | Yes |
+| 5 | Currency: rupees mean day first, US dollars mean month first | That order | Yes |
+| 6 | No clue at all | Date left empty, never guessed | Yes |
+
+The vendor comes before the currency because the vendor wrote the date. An Indian vendor billing in dollars still writes day first.
 
 ### What it warns about
 
@@ -155,7 +166,7 @@ The reader uses fixed rules, with no AI model. The same PDF always gives the sam
 | `tax_exempt` | The document says it is tax exempt | Yes |
 | `foreign_currency` | Not in the company's main currency | Yes |
 | `has_discount_line` | A line has a negative amount | Yes |
-| `ambiguous_date_order` | A date can be read two ways | No, our addition |
+| `ambiguous_date_order` | A date can be read two ways, and nothing on the document settles it | No, our addition |
 | `lines_do_not_match_subtotal` | The lines do not add up to the subtotal | No, our addition |
 | `line_amount_mismatch` | Quantity times rate does not equal the amount | No, our addition |
 | `tax_rate_mismatch` | The tax amount does not fit the stated rate | No, our addition |
@@ -175,7 +186,8 @@ The confidence score comes from simple rules, not from an AI's opinion. Each mai
 |---|---|
 | Field found under a clear label | 0.95 |
 | Total found and the sums agree | 0.98 |
-| Date can be read two ways, or the vendor has no tax number | 0.7 |
+| Date order taken from the vendor's country | 0.9 |
+| Date order taken from our company or the currency, or the vendor has no tax number | 0.7 |
 | Total does not add up | 0.5 |
 | A main field is missing | 0 |
 
@@ -192,6 +204,8 @@ Below 0.85, the platform's own review threshold, the document is marked for a pe
 | Anything else | `review` |
 
 On the 20 samples, version 2 proposes 11 draft bills, 1 duplicate to reject, 5 to reject as not a bill, and 3 credit notes for review.
+
+None of the sample vendors exists as a Party on either system, and creating a draft needs a vendor id, so no sample can become a draft until that is settled.
 
 ### How we tested it fairly
 
@@ -212,6 +226,7 @@ flowchart LR
 | Samples 15–20 | Frozen, `b4fe528` | **Yes** | 12 fields at 6/6, stated total 3/6 | 5/6 |
 | Samples 01–14 | Frozen, `b4fe528` | No, rules built on these | All at 14/14 | 14/14 |
 | All 20 | Version 2, `61b1f48` | No, fixed after seeing the result | All at 20/20 | 19/20 |
+| All 20 | Version 3, adds the date clues | No, built after seeing these samples | Not scored yet | Not scored yet |
 
 The full table per field is in [Current Status.md](Current%20Status.md).
 
@@ -220,14 +235,14 @@ The full table per field is in [Current Status.md](Current%20Status.md).
 1. **The title on a document cannot be trusted.** Bills and our own invoices can both say "TAX INVOICE", so we look at who is on each side.
 2. **A fair test finds what tuning hides.** The tuning samples had no credit notes, and all 14 scored perfectly. The fair test found the `CREDIT TOTAL` blind spot.
 3. **Failing safely worked.** The reader did not guess those three totals. It left them empty, scored them 0 and sent them to a person.
-4. **Our extra warning costs one exact match, and we are keeping it.** The key does not list `ambiguous_date_order`, but a person should check a date that can be read two ways.
+4. **A date's meaning depends on who wrote it, not on the currency.** The first rule assumed day first everywhere, which would misread many US documents. Version 3 uses the clues above, and only flags dates it cannot settle from the document or vendor.
 
 ### What this does not show yet
 
-- **Vendor bills on a fair test.** The fair samples held 3 sales invoices and 3 credit notes, so version 2 needs a new test set with vendor bills.
+- **Vendor bills on a fair test.** The fair samples held 3 sales invoices and 3 credit notes, so the latest version needs a new test set with vendor bills.
+- **Real US documents.** The US date rules have only been tested on made-up examples, because all 20 samples we have read are Indian. US vendors also have no GSTIN, so they always score 0.7 and go to a person first.
 - **Anything on the platform.** No document has gone through the platform's `extract` or `accept`, because we are waiting for permission.
 - **Scans and photos.** These go to a person for now.
-- **Duplicates across batches.** The reader only compares documents in the same run, not Bills already on the platform.
 
 ## What is a harness?
 
@@ -502,7 +517,7 @@ Our decisions need to be explainable and repeatable, and simple rules do that we
 | Idea | Our view | Why |
 |---|---|---|
 | Compare our reader with the platform's | **Yes, once allowed** | When two independent readers agree, that is strong evidence. When they disagree, a person looks |
-| Check duplicates against existing Bills | **Yes** | Today we only compare documents within one batch |
+| Check duplicates against existing Bills | **Yes** | It stops a repeat of a Bill already on the platform |
 | Vision AI model for scans and photos | **Test soon** | We do not yet know if the harness's model can read images |
 | OCR software package | **Maybe** | It must install with pip, because the harness setup is limited |
 | Trained document models (such as LayoutLM or Donut) | **No** | Too little data, and too heavy for the size of this job |
@@ -534,4 +549,4 @@ Our decisions need to be explainable and repeatable, and simple rules do that we
 | Is keeping the harness file on a separate fork branch acceptable? | Rohan |
 | What exactly happens at the 20 December integration run? | Rohan |
 | Does the harness's AI model accept images? | We test it |
-| Are the sample vendors present as Party records? `accept` needs a vendor id | We check |
+| How do the sample vendors get Party records? None of the 12 sample vendor bills matches one on either system, and `accept` needs a vendor id | Rohan |
