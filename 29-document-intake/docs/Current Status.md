@@ -2,23 +2,83 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 6 Nov 2026, 16:56 IST
+**Last updated:** 7 Nov 2026, 11:10 IST
 
 ## Right now
 
 | | |
 |---|---|
 | **Phase** | First task, due 15 Nov 2026 |
-| **Overall** | On track, as long as we get the two approvals listed under Blockers |
-| **Active branch** | `seat29/document-reader`, pushed to our fork, no PR yet. It builds on PR #11. `Issues.md` is held back |
+| **Overall** | The reader is on track. Draft Bills, due 15 Nov, are blocked until the items under Blockers are answered |
+| **Active branch** | `seat29/document-reader`, no PR yet. It builds on PR #11. Later reader versions are built but **not pushed**. The harness setup check is on its own branch |
 | **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11), read-only client and write guard |
 | **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
 | **Known cause** | All 3 misses were credit notes labelled `CREDIT TOTAL`, which the frozen rules could not read. They left the total empty and went to a person |
 | **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |
+| **Version 3** | Adds date clues: the document, then the vendor's country, then our company, then currency. Not pushed, not scored against the key. Compared with version 2, only one document changed: sample 20 lost its date flag, and its date stayed the same |
+| **Versions 4 and 5** | Later reader changes, not pushed, not scored against the key. All 20 sample results for the scored fields match version 3 |
 | **First task** | Reader and scores are done. Still missing: draft Bills on the platform, which need Rohan's permission |
-| **Report** | "Seat 29 First Task Accuracy Report" is drafted in Claude Docs. Confirm it was shared and sent |
-| **Bugs** | 15 reported on the platform by Sudip, all Received on 6 Nov, none triaged yet |
-| **Next action** | Send Rohan the report, and ask Priye for a new held-back set that includes vendor bills |
+| **Report** | "Seat 29 First Task Accuracy Report" is shared and linked in the 7 Nov message |
+| **Bugs** | 16 reported by Sudip. Course team's status on the first 15: 10 open, 2 fixed and live (BUG-29-006 and 011, description text only, confirmed by us on 7 Nov), 2 by design, 1 no change. BUG-29-016 was filed on 7 Nov, no reply yet |
+| **Team** | Priye is back and gave a GitHub ID on 7 Nov. The course team still needs to give Priye write access to merge |
+| **Next action** | Requests sent to the course team on 7 Nov, with answers asked for by 10 Nov. Sudip runs the scorer. See [What is pending](#what-is-pending) |
+
+## What is pending
+
+Open work by deadline. Done work is in the run log below. Some items are tracked separately by the team.
+
+### Due 15 Nov: first task
+
+| # | Item | Owner | Waiting on |
+|---|---|---|---|
+| 2 | Confirm the reply about the upload test was sent | Sudip | Nothing |
+| 3 | Get an answer on how the 12 sample vendors get Party records | Sudip | Rohan, asked 7 Nov, answer wanted by 10 Nov |
+| 4 | Get an answer on running `extract` and `accept` on the 20 samples | Sudip | Rohan, asked 5 Nov and 7 Nov, answer wanted by 10 Nov |
+| 5 | Create draft Bills on the platform. This is the only part of the first task not built | Claude | Items 3 and 4 |
+| 6 | Run the scorer on `local/predictions_v5_all.json`. Versions 3 to 5 have not been scored | Sudip | Nothing |
+| 7 | Ask Priye for a new held-back set with vendor bills, then test the latest version fairly | Sudip | Priye |
+| 8 | Push the later reader versions, when Sudip decides | Sudip | Nothing |
+| 9 | Get PR #11 reviewed and merged. Priye gave a GitHub ID on 7 Nov | Sudip, with Priye | Rohan: write access, asked 7 Nov, answer wanted by 10 Nov |
+
+### Dated and ongoing
+
+| When | Item | Owner |
+|---|---|---|
+| Sun 8 Nov, then weekly | Post the Sunday update | Sudip |
+| About 12 Nov | Renew the API tokens on both systems, which last 7 days | Sudip |
+| When announced | Recheck the tool list after Release 16 | Claude |
+| After the next release | Recheck the 4 bugs still marked for that release (BUG-29-006 and 011 are done). To close the list by 31 Dec, each of the 15 needs a final status | Sudip |
+
+### Due 30 Nov: version 1
+
+| # | Item | Owner | Waiting on |
+|---|---|---|---|
+| 1 | Collect documents from Drive, email and forms | Claude | Rohan: how an uploaded file reaches bill intake |
+| 2 | Connect to the platform's review queue | Claude | Permission for live data |
+| 3 | Build the reviewed write path for drafts | Claude, reviewed by Sudip and Priye | Permission for live data |
+| 4 | Handle scans and photos. The model accepted a test image but did not answer correctly, and a stricter check is ready, so read its result first | Claude | Sudip submits the next run, from 10 Nov, 11:00 |
+| 5 | Read our company, its GSTINs, currency and country from the platform, not from fixed values | Claude | Nothing |
+| 6 | Build the 12-task suite and harness file (status below) | Claude | Rohan: may the harness file live on a separate fork branch? |
+| 7 | Write the seat skill record on the platform: procedures, knowledge, examples | Sudip, with Priye | Nothing |
+
+**12-task suite.** No task has a suite test yet, and none has run in the harness.
+
+### Due 20 Dec: integration run
+
+| # | Item | Owner | Waiting on |
+|---|---|---|---|
+| 1 | Find out what happens at the run and how seats connect | Sudip | Rohan |
+| 2 | Finish the items the team tracks separately | Claude and Sudip | Rohan, for some items |
+
+### Due 31 Dec: final
+
+| # | Item | Owner |
+|---|---|---|
+| 1 | Suite passes on both Suryodaya and Keystone | Claude and Sudip |
+| 2 | Record the demo | Sudip, with Priye |
+| 3 | Final README and a closed bug list | Sudip, with Priye |
+| 4 | After the 20 Dec run, publish the team's remaining notes | Sudip |
+| 5 | Decide what a credit note becomes on the platform | Rohan |
 
 ## Milestones
 
@@ -35,22 +95,24 @@
 |---|---|---|
 | Platform client, read-only write guard | Built, in PR #11 | `intake/mcp_client.py` |
 | Live login check | Built, in PR #11 | `intake/probe.py` |
-| Document reader | Built, pushed to our fork | `intake/reader.py` |
-| Local extract command | Built, pushed to our fork | `intake/extract.py` |
+| Document reader | Built. Version 2 is pushed, later versions are not | `intake/reader.py` |
+| Local extract command | Built. Later version not pushed | `intake/extract.py` |
+| Later reader changes | Built, not pushed | `intake/` |
 | Accuracy scorer | Built, pushed to our fork, scores flags | `intake/score.py` |
-| Docs | The guide is committed. `Issues.md` is uncommitted and held back | `docs/` |
-| Accuracy report for Rohan | Drafted, private until shared | Claude Docs |
+| Docs | The guide and this status are committed. Other team notes are kept separately until after the 20 Dec run | `docs/` |
+| Accuracy report for Rohan | Shared, linked in the 7 Nov message | Claude Docs |
 | Collect from Drive, email and forms | **Not built** | |
 | Create drafts on the platform | **Not built**, needs approval | |
 | Review queue connection | **Not built** | |
 | Handling for scans and photos | **Not built** | |
+| Harness setup check | Pushed to our fork, branch `seat29/harness-setup-check`. First run passed 10 of 10 on 7 Nov | `harness/` on that branch |
 | 12-task suite and harness file | **Not built** | |
 | Seat skill record: procedures, knowledge, examples | **Not written** | On the platform |
 | Demo recording | **Not made** | |
 
 ## Latest results
 
-**Unit tests:** 86 of 86 passed on Python 3.12 (6 Nov).
+**Unit tests:** 256 of 256 passed on Python 3.11 and 3.12 on Windows, and Python 3.11 on Linux (7 Nov). The harness uses Python 3.11.16 on Linux.
 
 **Version 2 on all 20 samples (commit `61b1f48`, not a fair test):** all 13 fields at 20/20, flags 19/20. The one flag difference is the extra `ambiguous_date_order`, which we keep on purpose. Proposed actions: 11 draft bills, 1 duplicate rejected, 5 rejected as not a bill, 3 credit notes for review.
 
@@ -102,8 +164,10 @@
 | Sample files match our copies by size | 20 of 20 | 20 of 20 |
 | Samples extracted so far | 0 | 0 |
 | Our records on the platform | 1 Drive file, labelled `[seat29-upload-test]` | None |
-| Bills | 356 as of 5 Nov | 104 as of 5 Nov |
-| Harness link set | No | No |
+| Bills | 358 as of 6 Nov | 104 as of 6 Nov |
+| Parties | 233 | 147 |
+| Sample vendor bills matching a Party | 0 of 12 | 0 of 12 |
+| Harness link set | Yes, 7 Nov, branch `seat29/harness-setup-check`. The run covers both systems | No link of its own |
 
 Release 16 was not announced as live at the last update, but the samples are already stored. Recheck the tool list when the release is announced.
 
@@ -113,8 +177,9 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 
 | Blocker | Needs | Owner | Since |
 |---|---|---|---|
-| Permission to run `extract` and `accept` on live data | Rohan's answer | Sudip to ask | 5 Nov |
-| Can Priye merge PRs? No GitHub username as of 3 Nov | Priye to confirm | Sudip to ask | 5 Nov |
+| Permission to run `extract` and `accept` on the 20 samples | Rohan's answer | Asked 5 Nov and 7 Nov | 5 Nov |
+| Priye cannot merge PRs yet. GitHub ID given on 7 Nov | Rohan to give write access | Asked 7 Nov | 5 Nov |
+| Sample vendors have no Party records, and `accept` needs a vendor id, so no sample can become a draft | Rohan's answer | Asked 7 Nov | 6 Nov |
 
 ## Open questions
 
@@ -123,25 +188,16 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 | Where are the 20 sample PDFs? | Yes | **Answered 6 Nov:** zip supplied, and now stored on the platform |
 | Why do seeded files return `file_unavailable`? | Yes | **Answered 6 Nov:** they have records but no stored files |
 | Test one upload and report the result | Asked by Rohan | **Done.** Reply drafted. Confirm it was sent |
-| How does an uploaded file reach bill intake? | In the drafted reply | Waiting |
-| May we run `extract` and `accept` on live data? | Yes | Not answered in what we have seen |
-| Why does `Bill.submit` preview as allowed? | Yes | Not answered in what we have seen |
-| May the harness file live on a separate fork branch? | Yes | Not answered in what we have seen |
-
-## Next actions
-
-| # | Action | Owner |
-|---|---|---|
-| 1 | ~~Run `--describe` on the key~~ Done 6 Nov: 20 documents, 14 fields | Claude, at Sudip's request |
-| 2 | Tell Rohan the samples are already visible, and ask if `extract` may run on them | Sudip |
-| 3 | ~~Submit the bugs in [Issues.md](Issues.md)~~ Done 6 Nov: all 15 Received. Now watch for triage replies | Sudip |
-| 4 | ~~Align the reader with the key and score 01 to 14~~ Done 6 Nov: 13 of 13 fields at 14/14 | Claude, at Sudip's request |
-| 5 | ~~Add flag scoring and freeze the rules~~ Done 6 Nov, commit `b4fe528` | Claude |
-| 6 | ~~Run 15 to 20 once, and score it~~ Done 6 Nov | Claude |
-| 6a | ~~Fix `CREDIT TOTAL` as version 2~~ Done 6 Nov, commit `61b1f48` | Claude |
-| 6b | Ask Priye for a new held-back set, including vendor bills, to test version 2 fairly | Sudip |
-| 7 | Share the accuracy report and send it to Rohan before 15 Nov. It discloses that our coding assistant ran the scorer | Sudip, with Priye |
-| 8 | Post the Sunday update, first due 8 Nov | Sudip |
+| How does an uploaded file reach bill intake? | Yes, 7 Nov | Waiting |
+| May we run `extract` and `accept` on the 20 samples? | Yes, again on 7 Nov | Waiting |
+| Why does `Bill.submit` preview as allowed? | Yes | **Answered 6 Nov:** it comes from the role our login holds. A role decision is still open with the course team |
+| May the harness file live on a separate fork branch? | Yes, again on 7 Nov | **It works:** our 7 Nov run used one. Rohan has not confirmed it is the intended route |
+| Which Python and operating system does the harness use? | Yes, 7 Nov | **Answered 7 Nov by our own run:** Python 3.11.16 on Linux |
+| Does the harness's model read images? | Yes, 7 Nov | **Not settled.** It accepted a test image but did not answer correctly |
+| Who makes the login role decision, and by when? | Yes, 7 Nov | Waiting |
+| What should sales invoices and credit notes become? | Yes, 7 Nov | Waiting |
+| Does 20 Dec run on a copy or live data, and how do seats connect? | Yes, 7 Nov | Waiting |
+| How do the 12 sample vendors get Party records? | Yes, 7 Nov | Waiting |
 
 ## How to score
 
@@ -150,7 +206,7 @@ Run these from `29-document-intake`. They print field names and totals only, nev
 ```
 .venv\Scripts\python.exe -m intake.score --describe --key "PATH\TO\KEY.zip"
 .venv\Scripts\python.exe -m intake.score --labels --key "PATH\TO\KEY.zip"
-.venv\Scripts\python.exe -m intake.score local\predictions_tuning.json --key "PATH\TO\KEY.zip"
+.venv\Scripts\python.exe -m intake.score local\predictions_v5_all.json --key "PATH\TO\KEY.zip"
 ```
 
 ## Run log
@@ -159,6 +215,26 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 7 Nov, 11:10 | Docs brought up to date and committed. No new run | This status and the guide are pushed to our fork. Later reader versions stay unpushed |
+| 7 Nov, 11:08 | Stricter image check pushed to the harness branch, commit `5b8c4b3`. It passes only if the model names two colours correctly, and it records the short answers | 16 of 16 tests passed from a clean export on Python 3.11. Not run in the harness yet. Next submit from 10 Nov, 11:00 |
+| 7 Nov, 11:04 | Unit tests on Python 3.11 on Windows, and on Python 3.11 on Linux (Ubuntu in WSL) | 256 of 256 passed on both. All 20 sample results unchanged |
+| 7 Nov, 11:02 | **First harness run, setup check, commit `6182dc7`** | 10 of 10 on both systems, 585 tokens, about 90 seconds. Python 3.11.16 on Linux x86_64 with 4 CPUs. `Bill.submit` refused and Bill counts unchanged. The model accepted an image but did not answer the colour correctly, so image reading is not settled |
+| 7 Nov, 11:01 | Sudip set the harness link and submitted the setup check, commit `6182dc7`, at 11:00 | Accepted from the separate branch. Queued on both systems. Next submit no earlier than 10 Nov, 11:00 |
+| 7 Nov, 10:56 | Harness setup check pushed to our fork, branch `seat29/harness-setup-check`, commit `6182dc7`. No PR, because the harness file must not merge to `main` | 12 of 12 tests passed from a clean export. Link not set and no run submitted yet |
+| 7 Nov, 10:49 | Harness setup check built on a separate local branch. Its tests ran, then a read-only local run on both systems | 12 of 12 tests passed. Login, read and the Bill.submit refusal worked on both systems, and no record changed. The model check needs a real harness run. Not pushed |
+| 7 Nov, 09:34 | Sudip confirmed the report is shared and the answer key is moved. No new run | Sudip runs the scorer from now on |
+| 7 Nov, 09:32 | Sudip sent the course team our status and requests, by message. No new run | Answers asked for by 10 Nov. If none arrive, we deliver the reader, scores and proposed drafts on 15 Nov, and say no draft Bills were created |
+| 7 Nov, 09:03 | Harness link and run limits read, read-only | No link set, no run submitted. Nothing to run yet |
+| 7 Nov, 08:58 | Message for Rohan written, and the new bug report confirmed, read-only | 16 reports on the platform. Message not sent yet. No record changed by us |
+| 7 Nov, 08:52 | Read-only recheck of one drafted bug report, both systems | It still repeats. No record changed |
+| 7 Nov, 08:47 | Read-only recheck of the course team's fixes, both systems. 256 of 256 tests passed | BUG-29-006 and 011 descriptions are live. Queue results unchanged at 72 and 20. All 15 reports intact |
+| 6 Nov, 20:29 | Course team's status on the 15 bugs recorded. Bug list read, no record changed | 10 open, 2 fixed in the next release, 2 by design, 1 no change. None reproduced yet |
+| 6 Nov, 20:20 | Status and blockers added to the accuracy report. No new run | Report not sent yet. Nothing pushed |
+| 6 Nov, 20:15 | Docs updated. No new run | Nothing pushed |
+| 6 Nov, 19:52 | Reader version 5 finished, and pending work written up | 256 of 256 tests passed, also from a clean export of the commit. Not pushed |
+| 6 Nov, 19:15 | Reader version 5 built. Party and Bill lists read on both systems, no record changed. Samples compared with version 4 without the key | All tests passed. Scored fields unchanged. 0 of 12 sample vendor bills match a Party |
+| 6 Nov, 17:50 | Reader version 4 built. Samples compared with version 3 without the key | 220 of 220 tests passed. All 20 sample results identical |
+| 6 Nov, 17:16 | Version 3 date clues built and compared with version 2, without the key | 100 of 100 tests passed. Only sample 20 changed: date flag gone, date unchanged |
 | 6 Nov, 16:56 | Branch `seat29/document-reader` pushed to our fork | Scan of all commits found no secrets, samples or answer key. No PR opened |
 | 6 Nov, 16:44 | Sudip reported 15 bugs on the platform | All show Received, none triaged yet |
 | 6 Nov, ~16:40 | Docs updated with the solution details. No new run | The guide now covers fields, rules, flags, confidence, testing and lessons |
@@ -171,7 +247,7 @@ Newest first. Keep each entry to one line, with counts only.
 | 6 Nov, 16:22 | Scorer `--labels` on the answer key, at Sudip's request | Label lists only, nothing per document. 1 flag label withheld by the safeguard |
 | 6 Nov, 16:19 | Scorer `--describe` on the answer key | 20 documents, 14 fields. Names and types only, no answers printed, key not extracted |
 | 6 Nov, 16:13 | Intake queue state check, both systems | `review_required` returned 72 and 20 documents that were never extracted. Became BUG-29-006 |
-| 6 Nov, 16:11 | Read-only bug checks, both systems | 15 findings written up in Issues.md. No record changed |
+| 6 Nov, 16:11 | Read-only bug checks, both systems | 15 findings written up. No record changed |
 | 6 Nov, ~15:55 | Reader on samples 01 to 14 | 14 read, 12 bills and 2 sales invoices, all known traps in that range flagged |
 | 6 Nov, ~15:50 | Unit tests | First run: 9 failed and found the "Rs." bug. After the fix: 71 of 71 passed |
 | 6 Nov, 15:35 | One upload to Suryodaya, requested by Rohan | Stored correctly in Drive, did not reach the intake queue |
