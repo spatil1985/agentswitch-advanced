@@ -666,7 +666,7 @@ class DuplicatesCannotHide(unittest.TestCase):
 class DocumentsCannotReachTools(unittest.TestCase):
     """The core protection: no path exists from document text to a platform call."""
 
-    READING_MODULES = ("reader.py", "pdf_guard.py", "extract.py", "vendors.py")
+    READING_MODULES = ("reader.py", "pdf_guard.py", "extract.py", "vendors.py", "image_guard.py")
     FORBIDDEN_IMPORTS = {"intake.mcp_client", "mcp_client", "urllib", "http", "socket", "requests", "httpx",
                          "ftplib", "smtplib", "pickle", "marshal", "shelve"}
     FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__"}

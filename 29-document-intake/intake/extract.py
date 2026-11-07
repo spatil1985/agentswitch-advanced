@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from .image_guard import ImageReading, read_image
 from .pdf_guard import read_pdf
 from .reader import error_document, mark_duplicates, parse_document
 from .vendors import VendorRecords, VendorRecordsError, check_vendors, load_records
@@ -29,8 +30,39 @@ def safe_file_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", name)[:120]
 
 
+SUFFIXES_FOR = {"png": {".png"}, "jpeg": {".jpg", ".jpeg"}, "pdf": {".pdf"}}
+
+
+def _image_document(image: ImageReading) -> dict:
+    """A valid image goes to a person. Its pixels are not read, so it has no values to propose."""
+    if image.error:
+        return error_document(image.error)
+    doc = parse_document("", pdf_flags=("image_not_read", *image.flags))
+    doc["flags"] = [flag for flag in doc["flags"] if flag != "no_text_layer"]
+    doc["image"] = {"kind": image.kind, "width": image.width, "height": image.height}
+    return doc
+
+
+def _flag_misleading_name(doc: dict, path: Path, kind: Optional[str]) -> None:
+    """A sender chooses the name, so one that disagrees with the file's bytes is a warning sign."""
+    suffix = path.suffix.lower()
+    if not kind or not suffix or suffix in SUFFIXES_FOR.get(kind, ()):
+        return
+    doc["flags"].append("file_type_mismatch")
+    doc["needs_review"] = True
+    if doc["proposed_action"] == "draft_bill":
+        doc["proposed_action"] = "review"
+
+
 def extract_file(path: Path, own_country: Optional[str] = None) -> dict:
     """Read one file. A bad file gets an error result and never stops the batch."""
+    image = read_image(path)
+    if image is not None:
+        doc = _image_document(image)
+        _flag_misleading_name(doc, path, image.kind)
+        doc["source_file"] = safe_file_name(path.name)
+        doc["source_sha256"] = image.sha256
+        return doc
     reading = read_pdf(path)
     if reading.error:
         doc = error_document(reading.error)
@@ -39,6 +71,8 @@ def extract_file(path: Path, own_country: Optional[str] = None) -> dict:
             doc = parse_document(reading.text, own_country=own_country, pdf_flags=reading.flags)
         except Exception:  # A rule bug on one strange document must not lose the others.
             doc = error_document("reader_failed")
+    if not reading.error:
+        _flag_misleading_name(doc, path, "pdf")
     doc["source_file"] = safe_file_name(path.name)
     doc["source_sha256"] = reading.sha256
     return doc
