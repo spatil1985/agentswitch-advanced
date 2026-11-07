@@ -16,6 +16,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TOKEN, KEY = "fake-seat-token-abc123", "fake-model-key-xyz789"
 
+from harness.tasks import IMAGE_COLOURS, _solid_png  # noqa: E402
+
 
 class Fake(BaseHTTPRequestHandler):
     def log_message(self, *args):
@@ -45,20 +47,26 @@ class Fake(BaseHTTPRequestHandler):
             self._send(200, {"jsonrpc": "2.0", "id": body["id"],
                              "result": {"content": [{"type": "text", "text": json.dumps(result)}]}})
             return
-        has_image = isinstance(body["messages"][0]["content"], list)
+        content = body["messages"][0]["content"]
+        has_image = isinstance(content, list)
         state["model_calls"].append("image" if has_image else "text")
+        state["max_tokens"] = body["max_tokens"]
         if has_image and state["image_status"] != 200:
             self._send(state["image_status"], {"error": {"message": "images not supported"}})
         elif not has_image and state["text_status"] != 200:
             self._send(state["text_status"], {"error": {"message": "bad key " + KEY}})
         else:
-            self._send(200, {"choices": [{"message": {"content": state["reply"] if has_image else "ok"}}]})
+            colour = next((name for name, value in IMAGE_COLOURS.items()
+                           if has_image and content[1]["image_url"]["url"] == _solid_png(value)), None)
+            reply = state["replies"].get(colour, "") if has_image else "ok"
+            self._send(200, {"choices": [{"message": {"content": reply}, "finish_reason": state["finish"]}]})
 
 
 class SetupCheck(unittest.TestCase):
     def setUp(self):
         self.server = HTTPServer(("127.0.0.1", 0), Fake)
-        self.server.state = {"tools": [], "model_calls": [], "bills": 7, "submit_adds": 0, "reply": "Red.",
+        self.server.state = {"tools": [], "model_calls": [], "bills": 7, "submit_adds": 0,
+                             "replies": {"red": "Red.", "blue": "Blue."}, "finish": "stop",
                              "image_status": 200, "text_status": 200, "labels": {"Bill.list": "READ", "Bill.submit": "WRITE"}}
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.server.server_close)
@@ -85,7 +93,11 @@ class SetupCheck(unittest.TestCase):
             self.assertTrue(row["id"].startswith("keystone:"), row["id"])
             self.assertEqual(set(row), {"id", "title", "passed", "score", "evidence"})
             self.assertEqual(row["score"], 1.0)
-        self.assertIn("images=accepted; read_correctly=True", tasks["model_accepts_images"]["evidence"])
+        evidence = tasks["model_reads_images"]["evidence"]
+        self.assertIn("images=accepted; read_correctly=True", evidence)
+        self.assertIn("red_image_answer=Red; red_finish=stop; blue_image_answer=Blue; blue_finish=stop", evidence)
+        self.assertEqual(self.server.state["model_calls"], ["text", "image", "image"])
+        self.assertGreaterEqual(self.server.state["max_tokens"], 100)
 
     def test_the_prefix_comes_from_the_run(self):
         self.env["AGENTSWITCH_INSTANCE"] = "suryodaya"
@@ -105,22 +117,46 @@ class SetupCheck(unittest.TestCase):
         self.assertFalse(tasks["guard_refuses_posting"]["passed"])
         self.assertIn("refused=False; sent=True; bills_before=7; bills_after=8", tasks["guard_refuses_posting"]["evidence"])
 
-    def test_a_model_that_refuses_images_is_a_clear_answer(self):
+    def test_a_model_that_refuses_images_does_not_pass(self):
         self.server.state["image_status"] = 400
         _, tasks = self.run_check()
-        self.assertTrue(tasks["model_accepts_images"]["passed"])
-        self.assertIn("images=refused; http=400", tasks["model_accepts_images"]["evidence"])
+        self.assertFalse(tasks["model_reads_images"]["passed"])
+        self.assertIn("images=refused; http=400", tasks["model_reads_images"]["evidence"])
 
-    def test_accepting_an_image_without_reading_it_shows(self):
-        self.server.state["reply"] = "Blue."
+    def test_accepting_an_image_without_reading_it_does_not_pass(self):
+        self.server.state["replies"] = {"red": "Green.", "blue": "Green."}
         _, tasks = self.run_check()
-        self.assertIn("read_correctly=False", tasks["model_accepts_images"]["evidence"])
+        self.assertFalse(tasks["model_reads_images"]["passed"])
+        self.assertIn("read_correctly=False; red_image_answer=Green", tasks["model_reads_images"]["evidence"])
+
+    def test_the_same_answer_for_both_colours_does_not_pass(self):
+        self.server.state["replies"] = {"red": "Red.", "blue": "Red."}
+        _, tasks = self.run_check()
+        self.assertFalse(tasks["model_reads_images"]["passed"])
+
+    def test_naming_both_colours_is_not_an_answer(self):
+        self.server.state["replies"] = {"red": "Red or blue", "blue": "Red or blue"}
+        _, tasks = self.run_check()
+        self.assertFalse(tasks["model_reads_images"]["passed"])
+
+    def test_a_cut_off_empty_reply_shows_why(self):
+        self.server.state["replies"] = {"red": "", "blue": ""}
+        self.server.state["finish"] = "length"
+        _, tasks = self.run_check()
+        self.assertFalse(tasks["model_reads_images"]["passed"])
+        self.assertIn("red_image_answer=empty; red_finish=length", tasks["model_reads_images"]["evidence"])
+
+    def test_a_long_answer_cannot_fill_the_results(self):
+        self.server.state["replies"] = {"red": "Red " + "x" * 500 + " <b>", "blue": "Blue"}
+        _, tasks = self.run_check()
+        self.assertLessEqual(len(tasks["model_reads_images"]["evidence"]), 300)
+        self.assertNotIn("<b>", tasks["model_reads_images"]["evidence"])
 
     def test_a_broken_model_is_an_infrastructure_failure(self):
         self.server.state["text_status"] = 401
         _, tasks = self.run_check()
-        self.assertFalse(tasks["model_accepts_images"]["passed"])
-        self.assertIn("infrastructure", tasks["model_accepts_images"]["evidence"])
+        self.assertFalse(tasks["model_reads_images"]["passed"])
+        self.assertIn("infrastructure", tasks["model_reads_images"]["evidence"])
         self.assertEqual(self.server.state["model_calls"], ["text"])
 
     def test_missing_settings_are_named_and_the_rest_still_run(self):
@@ -129,7 +165,7 @@ class SetupCheck(unittest.TestCase):
         self.assertEqual(len(results["tasks"]), 5)
         self.assertFalse(tasks["system_and_settings"]["passed"])
         self.assertIn("missing_settings=OPENAI_API_KEY", tasks["system_and_settings"]["evidence"])
-        self.assertIn("infrastructure", tasks["model_accepts_images"]["evidence"])
+        self.assertIn("infrastructure", tasks["model_reads_images"]["evidence"])
         self.assertTrue(tasks["login_and_read"]["passed"])
 
     def test_a_dead_platform_costs_only_its_own_tasks(self):

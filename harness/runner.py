@@ -1,7 +1,7 @@
 """Run the Seat 29 setup check and write results.json.
 
-Format: 34-eval-harness/TASK_FORMAT.md. Evidence holds counts and yes/no answers only,
-never tokens, record contents or model replies.
+Format: 34-eval-harness/TASK_FORMAT.md. Evidence holds counts, yes/no answers and the
+model's short answer about our own test images, never tokens or record contents.
 """
 from __future__ import annotations
 

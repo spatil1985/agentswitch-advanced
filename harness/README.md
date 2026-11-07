@@ -8,9 +8,9 @@ A small run to confirm our harness setup before the 12-task suite is ready. It f
 | `packages_installed` | `requirements.txt` installs and works |
 | `login_and_read` | The seat token logs in and can read on the copy |
 | `guard_refuses_posting` | Our client refuses `Bill.submit`, sends nothing and the Bill count stays the same |
-| `model_accepts_images` | Whether the run's model accepts images, which decides how we handle scans |
+| `model_reads_images` | Whether the run's model names the colour of two test images correctly, which decides how we handle scans |
 
-Evidence holds counts and yes/no answers only.
+Evidence holds counts, yes/no answers and the model's short answer about our own test images.
 
 Run the tests from the repo root:
 
