@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 7 Nov 2026, 11:10 IST
+**Last updated:** 7 Nov 2026, 11:24 IST
 
 ## Right now
 
@@ -112,7 +112,7 @@ Open work by deadline. Done work is in the run log below. Some items are tracked
 
 ## Latest results
 
-**Unit tests:** 256 of 256 passed on Python 3.11 and 3.12 on Windows, and Python 3.11 on Linux (7 Nov). The harness uses Python 3.11.16 on Linux.
+**Unit tests:** 300 of 300 passed on Python 3.12 on Windows and Python 3.11 on Linux (7 Nov). The harness uses Python 3.11.16 on Linux.
 
 **Version 2 on all 20 samples (commit `61b1f48`, not a fair test):** all 13 fields at 20/20, flags 19/20. The one flag difference is the extra `ambiguous_date_order`, which we keep on purpose. Proposed actions: 11 draft bills, 1 duplicate rejected, 5 rejected as not a bill, 3 credit notes for review.
 
@@ -215,6 +215,8 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 7 Nov, 11:24 | Status updated and pushed to our fork. No new run | Later reader versions stay unpushed |
+| 7 Nov, 11:23 | Reader now sends a valid photo to a person, not pushed. Pictures are not read yet | 300 of 300 tests passed on Windows and Linux. All 20 sample results unchanged |
 | 7 Nov, 11:10 | Docs brought up to date and committed. No new run | This status and the guide are pushed to our fork. Later reader versions stay unpushed |
 | 7 Nov, 11:08 | Stricter image check pushed to the harness branch, commit `5b8c4b3`. It passes only if the model names two colours correctly, and it records the short answers | 16 of 16 tests passed from a clean export on Python 3.11. Not run in the harness yet. Next submit from 10 Nov, 11:00 |
 | 7 Nov, 11:04 | Unit tests on Python 3.11 on Windows, and on Python 3.11 on Linux (Ubuntu in WSL) | 256 of 256 passed on both. All 20 sample results unchanged |
