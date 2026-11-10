@@ -241,7 +241,7 @@ The full table per field is in [Current Status.md](Current%20Status.md).
 
 - **Vendor bills on a fair test.** The fair samples held 3 sales invoices and 3 credit notes, so the latest version needs a new test set with vendor bills.
 - **Real US documents.** The US date rules have only been tested on made-up examples, because all 20 samples we have read are Indian. US vendors also have no GSTIN, so they always score 0.7 and go to a person first.
-- **Anything on the platform.** No document has gone through the platform's `extract` or `accept`, because we are waiting for permission.
+- **Anything on the platform.** No document has gone through the platform's `extract` or `accept` on the live systems. The course team allowed both on the harness copy on 10 Nov, and will decide on the live systems by 12 Nov.
 - **Scans and photos.** These go to a person for now.
 
 ## What is a harness?
@@ -540,13 +540,14 @@ Our decisions need to be explainable and repeatable, and simple rules do that we
 
 ## Questions still open
 
+Answered on 10 Nov: the harness file stays on a separate fork branch, also for the 30 Nov suite. A vendor's GSTIN is checked against `gst_no` on that vendor's Bills. The harness's model reads images.
+
 | Question | Who answers |
 |---|---|
-| May we run `extract` and `accept` on live data, and on which records? | Rohan |
-| How should a newly uploaded file reach bill intake? | Rohan |
-| What should a credit note become on the platform? | Rohan |
-| Can we get a new held-back set that includes vendor bills? | Rohan or Priye |
-| Is keeping the harness file on a separate fork branch acceptable? | Rohan |
-| What exactly happens at the 20 December integration run? | Rohan |
-| Does the harness's AI model accept images? | We test it |
-| How do the sample vendors get Party records? None of the 12 sample vendor bills matches one on either system, and `accept` needs a vendor id | Rohan |
+| May we run `extract` and `accept` on live data, and on which records? Allowed on the harness copy since 10 Nov | Rohan, by 12 Nov |
+| How should a newly uploaded file reach bill intake? | Rohan, after 15 Nov |
+| What should a credit note become on the platform? | Rohan, after 15 Nov |
+| Can we get a new held-back set that includes vendor bills? | Priye is building one, due 12 Nov |
+| What exactly happens at the 20 December integration run? | Rohan, after 15 Nov |
+| How do the sample vendors get Party records? None of the 12 sample vendor bills matches one on either system, and `accept` needs a vendor id. One labelled test Party is allowed on the harness copy | Rohan, by 12 Nov |
+| How should a US vendor's tax id be checked? | Rohan, asked 10 Nov |
