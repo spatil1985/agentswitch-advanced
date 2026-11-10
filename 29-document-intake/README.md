@@ -28,7 +28,9 @@ python -m intake.probe suryodaya keystone
 
 The tests fake every network call. The probe needs a token for each system, in the environment or in the git-ignored `.env`, as `AGENTSWITCH_SURYODAYA_TOKEN` and `AGENTSWITCH_KEYSTONE_TOKEN`. It makes read-only calls and prints counts only.
 
-`intake/mcp_client.py` is read-only for now. Its write guard allows a call only if the platform marks the tool READ, and it refuses everything else before sending, including posting tools such as `Bill.submit`. Writes will get their own reviewed path.
+`intake/mcp_client.py` is read-only for now. Its write guard allows a call only if the platform marks the tool READ, and it refuses everything else before sending, including posting tools such as `Bill.submit`.
+
+**Writes run only on the harness copy, never on the live systems.** `intake/write_path.py` is the only route for writes. It refuses unless the run has `AGENTSWITCH_RUN_ID` and its base URL is neither live system. It allows three tools only: `extract`, `accept`, and `Party.create` for a test record labelled `[seat29-harness]`. Each write records who approved it. `Bill.submit` and `Bill.open` are never allowed, so an accepted bill stays a draft. Writes on the live systems wait for the course team's permission.
 
 ## When a call fails
 - `AuthError`: the token was rejected or has expired (it lasts 7 days). Log in again, once. Ten wrong passwords in 15 minutes lock the login.

@@ -10,8 +10,8 @@
 |---|---|
 | **Phase** | First task, due 15 Nov 2026 |
 | **Overall** | The reader is on track. Draft Bills, due 15 Nov, are blocked until the items under Blockers are answered |
-| **Active branch** | `seat29/document-reader`, pushed to our fork on 10 Nov with every reader version and the write path. No PR yet. It builds on PR #11. The harness checks are on `seat29/harness-setup-check`. Some notes stay private until after 20 Dec |
-| **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11), read-only client and write guard |
+| **Active branch** | `seat29/document-reader`. On 10 Nov it was also pushed to `seat29/platform-client`, so PR #11 now holds the client, every reader version, the vendor check and the write path: 19 commits, 25 files. The harness checks are on `seat29/harness-setup-check`, which is never merged. Some notes stay private until after 20 Dec |
+| **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11): client and write guard, reader, vendor check, and the write path for harness copies. The PR title and description still describe only the client |
 | **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
 | **Known cause** | All 3 misses were credit notes labelled `CREDIT TOTAL`, which the frozen rules could not read. They left the total empty and went to a person |
 | **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |

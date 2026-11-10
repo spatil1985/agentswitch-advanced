@@ -82,7 +82,7 @@ flowchart LR
 | 1. Collect from Drive, email and forms | Not built |
 | 2 to 6. Read, identify, extract, check and score | **Built for local PDFs.** Accuracy was measured on version 2, and later versions have not been scored. See [The solution so far](#the-solution-so-far) |
 | 7. Review queue | Not built. The platform already has one we can use |
-| 8. Draft Bill | Not built. It needs a separately reviewed write path |
+| 8. Draft Bill | **Built for the harness copy only** (`intake/write_path.py`). Not run on the live systems, which needs the course team's permission |
 
 ### Words you will see
 
