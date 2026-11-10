@@ -13,6 +13,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -27,6 +28,14 @@ SEAT_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 # The lookup the guard itself depends on. It is read-only.
 _DESCRIBE_TOOL = "tools.describe"
+
+# Refused by name whatever label the platform gives them. The risk class check below
+# still applies to the rest.
+_NEVER_CALL = re.compile(
+    r"\.(?:submit|open|close|post|send\w*|reply|approve\w*|accept|reject|extract|mark_\w+|record_\w+|apply_to_\w+|"
+    r"delete\w*|void\w*|cancel\w*)(?:\.|$)",
+    re.I,
+)
 
 # Takes the request body; returns (HTTP status, response text).
 Transport = Callable[[bytes], "tuple[int, str]"]
@@ -167,6 +176,8 @@ class McpClient:
     def _check_guard(self, name: str) -> None:
         if name == _DESCRIBE_TOOL:
             return
+        if _NEVER_CALL.search(name):
+            raise GuardRefused(f"{name}: this kind of action is never allowed from this client.")
         risk_class = self._risk_class(name)
         if risk_class != "READ":
             raise GuardRefused(f"{name}: risk class {risk_class or 'unknown'} is not allowed.")
