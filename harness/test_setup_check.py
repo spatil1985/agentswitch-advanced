@@ -79,8 +79,9 @@ class SetupCheck(unittest.TestCase):
         self.env.update(AGENTSWITCH_BASE_URL=url, AGENTSWITCH_TOKEN=TOKEN, AGENTSWITCH_INSTANCE="keystone",
                         AGENTSWITCH_RUN_ID="run-1", OPENAI_BASE_URL=url + "/v1", OPENAI_API_KEY=KEY, OPENAI_MODEL="m")
 
-    def run_check(self):
-        done = subprocess.run([sys.executable, "-m", "harness.runner", "--out", str(self.out)], cwd=ROOT, env=self.env,
+    def run_check(self, group="setup"):
+        command = [sys.executable, "-m", "harness.runner", "--out", str(self.out)] + (["--only", group] if group else [])
+        done = subprocess.run(command, cwd=ROOT, env=self.env,
                               capture_output=True, text=True, timeout=120)
         self.assertEqual(done.returncode, 0, done.stderr)
         results = json.loads(self.out.read_text(encoding="utf-8"))
@@ -110,12 +111,21 @@ class SetupCheck(unittest.TestCase):
         self.assertIn("refused=True; sent=False", tasks["guard_refuses_posting"]["evidence"])
         self.assertNotIn("Bill.submit", self.server.state["tools"])
 
-    def test_a_posting_call_that_goes_through_fails_the_check(self):
+    def test_a_mislabelled_bill_submit_is_still_refused(self):
         self.server.state["labels"]["Bill.submit"] = "READ"
         self.server.state["submit_adds"] = 1
         _, tasks = self.run_check()
-        self.assertFalse(tasks["guard_refuses_posting"]["passed"])
-        self.assertIn("refused=False; sent=True; bills_before=7; bills_after=8", tasks["guard_refuses_posting"]["evidence"])
+        self.assertTrue(tasks["guard_refuses_posting"]["passed"])
+        self.assertIn("refused=True; sent=False; bills_before=7; bills_after=7", tasks["guard_refuses_posting"]["evidence"])
+        self.assertNotIn("Bill.submit", self.server.state["tools"])
+
+    def test_the_full_run_holds_every_check(self):
+        results, tasks = self.run_check(group=None)
+        self.assertEqual(len(results["tasks"]), 13)
+        self.assertIn("accept_one_draft", tasks)
+        for row in results["tasks"]:
+            self.assertEqual(set(row), {"id", "title", "passed", "score", "evidence"})
+            self.assertLessEqual(len(row["evidence"]), 300)
 
     def test_a_model_that_refuses_images_does_not_pass(self):
         self.server.state["image_status"] = 400

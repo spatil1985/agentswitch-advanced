@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import tasks
+from . import intake_checks, tasks
 
 SECRET_SETTINGS = ("AGENTSWITCH_TOKEN", "OPENAI_API_KEY")
 MAX_EVIDENCE_CHARS = 300
@@ -42,10 +42,13 @@ def run_task(task, instance: str) -> dict:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", default="results.json")
+    parser.add_argument("--only", choices=("setup", "intake"), help="run one group of checks; the harness runs both")
     args = parser.parse_args(argv)
 
     instance = os.environ.get("AGENTSWITCH_INSTANCE") or "unknown"
-    results = [run_task(task, instance) for task in tasks.ALL]
+    groups = {"setup": tasks.ALL, "intake": intake_checks.ALL}
+    chosen = groups[args.only] if args.only else tasks.ALL + intake_checks.ALL
+    results = [run_task(task, instance) for task in chosen]
     passed = sum(row["passed"] for row in results)
     with open(args.out, "w", encoding="utf-8") as out:
         json.dump({"tasks": results, "summary": f"{instance}: {passed}/{len(results)} tasks passed"}, out, indent=2)

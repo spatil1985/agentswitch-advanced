@@ -2,4 +2,4 @@ install = "pip install -r requirements.txt"
 run     = "python -m harness.runner --out results.json"
 results = "results.json"
 instances = ["suryodaya", "keystone"]
-timeout_minutes = 5
+timeout_minutes = 15
