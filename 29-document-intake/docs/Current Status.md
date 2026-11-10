@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 7 Nov 2026, 11:24 IST
+**Last updated:** 10 Nov 2026, 10:40 IST
 
 ## Right now
 
@@ -10,18 +10,19 @@
 |---|---|
 | **Phase** | First task, due 15 Nov 2026 |
 | **Overall** | The reader is on track. Draft Bills, due 15 Nov, are blocked until the items under Blockers are answered |
-| **Active branch** | `seat29/document-reader`, no PR yet. It builds on PR #11. Later reader versions are built but **not pushed**. The harness setup check is on its own branch |
+| **Active branch** | `seat29/document-reader`, pushed to our fork on 10 Nov with every reader version and the write path. No PR yet. It builds on PR #11. The harness checks are on `seat29/harness-setup-check`. Some notes stay private until after 20 Dec |
 | **In review** | [PR #11](https://github.com/theschoolofai/agentswitch-advanced/pull/11), read-only client and write guard |
 | **Accuracy** | **Fair test on samples 15 to 20: 12 of 13 fields at 6/6, `total_stated` at 3/6, flags 5/6.** Rules frozen at commit `b4fe528` |
 | **Known cause** | All 3 misses were credit notes labelled `CREDIT TOTAL`, which the frozen rules could not read. They left the total empty and went to a person |
 | **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |
-| **Version 3** | Adds date clues: the document, then the vendor's country, then our company, then currency. Not pushed, not scored against the key. Compared with version 2, only one document changed: sample 20 lost its date flag, and its date stayed the same |
-| **Versions 4 and 5** | Later reader changes, not pushed, not scored against the key. All 20 sample results for the scored fields match version 3 |
+| **Version 3** | Adds date clues: the document, then the vendor's country, then our company, then currency. Pushed 10 Nov, not scored against the key. Compared with version 2, only one document changed: sample 20 lost its date flag, and its date stayed the same |
+| **Versions 4 and 5** | Later reader changes, pushed 10 Nov, not scored against the key. All 20 sample results for the scored fields match version 3 |
+| **Harness** | 13 checks ready on `seat29/harness-setup-check`: setup, all unit tests, risky tools refused, the copy's samples, our reader, the vendor check, and the platform's `extract` and `accept` on the copy. Read-only dry runs on live data passed every read-only check. Not submitted yet |
 | **First task** | Reader and scores are done. Still missing: draft Bills on the platform, which need Rohan's permission |
 | **Report** | "Seat 29 First Task Accuracy Report" is shared and linked in the 7 Nov message |
 | **Bugs** | 16 reported by Sudip. Course team's status on the first 15: 10 open, 2 fixed and live (BUG-29-006 and 011, description text only, confirmed by us on 7 Nov), 2 by design, 1 no change. BUG-29-016 was filed on 7 Nov, no reply yet |
 | **Team** | Priye is back and gave a GitHub ID on 7 Nov. The course team still needs to give Priye write access to merge |
-| **Next action** | Requests sent to the course team on 7 Nov, with answers asked for by 10 Nov. Sudip runs the scorer. See [What is pending](#what-is-pending) |
+| **Next action** | Submit the harness run once it opens at 11:00 on 10 Nov, then read the results. Requests to the course team are still unanswered, and a follow-up is drafted |
 
 ## What is pending
 
@@ -96,8 +97,9 @@ Open work by deadline. Done work is in the run log below. Some items are tracked
 | Platform client, read-only write guard | Built, in PR #11 | `intake/mcp_client.py` |
 | Live login check | Built, in PR #11 | `intake/probe.py` |
 | Document reader | Built. Version 2 is pushed, later versions are not | `intake/reader.py` |
-| Local extract command | Built. Later version not pushed | `intake/extract.py` |
-| Later reader changes | Built, not pushed | `intake/` |
+| Local extract command | Built, pushed | `intake/extract.py` |
+| Later reader changes | Built, pushed | `intake/` |
+| Write path, harness copies only | Built, pushed. Allows `extract`, `accept` and a labelled `Party.create`, and refuses everything outside a harness copy | `intake/write_path.py` |
 | Accuracy scorer | Built, pushed to our fork, scores flags | `intake/score.py` |
 | Docs | The guide and this status are committed. Other team notes are kept separately until after the 20 Dec run | `docs/` |
 | Accuracy report for Rohan | Shared, linked in the 7 Nov message | Claude Docs |
@@ -215,6 +217,9 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 10 Nov, 10:40 | Branches pushed to our fork: `seat29/document-reader` and `seat29/harness-setup-check`, after Sudip decided to publish the code | A scan of every new commit found no secrets, samples or answer key. Private notes were not included |
+| 10 Nov, ~10:35 | Harness checks built: a write path for harness copies only, and 8 new intake checks. Read-only dry runs on live Suryodaya and Keystone | 309 unit tests and 27 harness tests passed. Every read-only check passed on both systems. The write checks refused on live data, as designed |
+| 10 Nov, 10:20 | Read-only check for any change since the 7 Nov requests, both systems | Nothing changed: 0 of 11 sample vendors have a Party, all 20 samples not extracted, all 16 reports still `new`, PR #11 has no review |
 | 7 Nov, 11:24 | Status updated and pushed to our fork. No new run | Later reader versions stay unpushed |
 | 7 Nov, 11:23 | Reader now sends a valid photo to a person, not pushed. Pictures are not read yet | 300 of 300 tests passed on Windows and Linux. All 20 sample results unchanged |
 | 7 Nov, 11:10 | Docs brought up to date and committed. No new run | This status and the guide are pushed to our fork. Later reader versions stay unpushed |
