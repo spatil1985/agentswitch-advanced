@@ -2,7 +2,7 @@
 
 **The single place to see where Seat 29 stands.** Update it after every run: change "Right now" and any tables that moved, and add one line to the run log.
 
-**Last updated:** 10 Nov 2026, 10:40 IST
+**Last updated:** 10 Nov 2026, 12:00 IST
 
 ## Right now
 
@@ -17,12 +17,12 @@
 | **Version 2** | Commit `61b1f48` reads that label. All 20: 13 of 13 fields at 20/20, flags 19/20. **Not a fair test**, because the fix came after seeing the result |
 | **Version 3** | Adds date clues: the document, then the vendor's country, then our company, then currency. Pushed 10 Nov, not scored against the key. Compared with version 2, only one document changed: sample 20 lost its date flag, and its date stayed the same |
 | **Versions 4 and 5** | Later reader changes, pushed 10 Nov, not scored against the key. All 20 sample results for the scored fields match version 3 |
-| **Harness** | 13 checks ready on `seat29/harness-setup-check`: setup, all unit tests, risky tools refused, the copy's samples, our reader, the vendor check, and the platform's `extract` and `accept` on the copy. Read-only dry runs on live data passed every read-only check. Not submitted yet |
+| **Harness** | Second run, 10 Nov 11:02, commit `f462dea`: **14 of 26** (7 of 13 on each system). Setup, image reading, all 309 unit tests and the 14 risky-tool refusals passed on both. The sample files gave an HTTP error on both copies, and the checks after that had nothing to run on. A fix is ready locally, not pushed |
 | **First task** | Reader and scores are done. Still missing: draft Bills on the platform, which need Rohan's permission |
 | **Report** | "Seat 29 First Task Accuracy Report" is shared and linked in the 7 Nov message |
 | **Bugs** | 16 reported by Sudip. Course team's status on the first 15: 10 open, 2 fixed and live (BUG-29-006 and 011, description text only, confirmed by us on 7 Nov), 2 by design, 1 no change. BUG-29-016 was filed on 7 Nov, no reply yet |
 | **Team** | Priye is back and gave a GitHub ID on 7 Nov. The course team still needs to give Priye write access to merge |
-| **Next action** | Submit the harness run once it opens at 11:00 on 10 Nov, then read the results. Requests to the course team are still unanswered, and a follow-up is drafted |
+| **Next action** | Sudip decides whether to push the harness fix. The next submit opens 13 Nov, about 11:02. Requests to the course team are still unanswered, and a follow-up is drafted |
 
 ## What is pending
 
@@ -57,7 +57,7 @@ Open work by deadline. Done work is in the run log below. Some items are tracked
 | 1 | Collect documents from Drive, email and forms | Claude | Rohan: how an uploaded file reaches bill intake |
 | 2 | Connect to the platform's review queue | Claude | Permission for live data |
 | 3 | Build the reviewed write path for drafts | Claude, reviewed by Sudip and Priye | Permission for live data |
-| 4 | Handle scans and photos. The model accepted a test image but did not answer correctly, and a stricter check is ready, so read its result first | Claude | Sudip submits the next run, from 10 Nov, 11:00 |
+| 4 | Handle scans and photos. The harness's model named both test colours correctly on 10 Nov, so a model can read scans in the harness | Claude | Nothing |
 | 5 | Read our company, its GSTINs, currency and country from the platform, not from fixed values | Claude | Nothing |
 | 6 | Build the 12-task suite and harness file (status below) | Claude | Rohan: may the harness file live on a separate fork branch? |
 | 7 | Write the seat skill record on the platform: procedures, knowledge, examples | Sudip, with Priye | Nothing |
@@ -195,7 +195,7 @@ API tokens were issued on 5 Nov and last 7 days, so they need renewing around 12
 | Why does `Bill.submit` preview as allowed? | Yes | **Answered 6 Nov:** it comes from the role our login holds. A role decision is still open with the course team |
 | May the harness file live on a separate fork branch? | Yes, again on 7 Nov | **It works:** our 7 Nov run used one. Rohan has not confirmed it is the intended route |
 | Which Python and operating system does the harness use? | Yes, 7 Nov | **Answered 7 Nov by our own run:** Python 3.11.16 on Linux |
-| Does the harness's model read images? | Yes, 7 Nov | **Not settled.** It accepted a test image but did not answer correctly |
+| Does the harness's model read images? | Yes, 7 Nov | **Yes.** On 10 Nov it named a red and a blue test image correctly on both systems |
 | Who makes the login role decision, and by when? | Yes, 7 Nov | Waiting |
 | What should sales invoices and credit notes become? | Yes, 7 Nov | Waiting |
 | Does 20 Dec run on a copy or live data, and how do seats connect? | Yes, 7 Nov | Waiting |
@@ -217,6 +217,8 @@ Newest first. Keep each entry to one line, with counts only.
 
 | When (IST) | Run | Result |
 |---|---|---|
+| 10 Nov, 12:00 | Harness fix, local only: the HTTP status is logged, a refused token is tried once without it, `extract` runs on every listed sample even if downloads fail, and `accept` uses the platform's values only when our reader had no files | 31 harness tests passed. Read-only dry run on live Suryodaya: same as before, 20 of 20 downloaded and matched. Not pushed |
+| 10 Nov, 11:02 | **Second harness run, commit `f462dea`, 1,349 tokens** | 14 of 26, 7 of 13 on each system. Passed: setup, image reading (both colours right), 309 unit tests, 14 of 14 risky tools refused, Bill counts unchanged. Failed: all 20 sample downloads gave an HTTP error with no status kept, so the reader, vendor, `extract`, comparison and `accept` checks had nothing to run on. The live system serves the same files even without a token |
 | 10 Nov, 10:40 | Branches pushed to our fork: `seat29/document-reader` and `seat29/harness-setup-check`, after Sudip decided to publish the code | A scan of every new commit found no secrets, samples or answer key. Private notes were not included |
 | 10 Nov, ~10:35 | Harness checks built: a write path for harness copies only, and 8 new intake checks. Read-only dry runs on live Suryodaya and Keystone | 309 unit tests and 27 harness tests passed. Every read-only check passed on both systems. The write checks refused on live data, as designed |
 | 10 Nov, 10:20 | Read-only check for any change since the 7 Nov requests, both systems | Nothing changed: 0 of 11 sample vendors have a Party, all 20 samples not extracted, all 16 reports still `new`, PR #11 has no review |
