@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
@@ -135,15 +136,38 @@ def risky_tools_refused():
     return refused == len(RISKY_TOOLS) and not leaked and before == after, evidence
 
 
-def _download(settings, file_url: str) -> bytes:
-    url = settings.base_url.rstrip("/") + "/" + file_url.lstrip("/")
-    request = urllib.request.Request(url, headers={"Authorization": "Bearer " + settings.token,
-                                                   "User-Agent": "seat29-harness"})
-    with urllib.request.urlopen(request, timeout=60) as response:
+def _fetch(url: str, token: Optional[str]) -> bytes:
+    headers = {"User-Agent": "seat29-harness"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as response:
         data = response.read(MAX_DOWNLOAD_BYTES + 1)
     if len(data) > MAX_DOWNLOAD_BYTES:
         raise ValueError("file too large")
     return data
+
+
+def _failure(error: Exception) -> str:
+    return f"http_{error.code}" if isinstance(error, urllib.error.HTTPError) else type(error).__name__
+
+
+def _download(settings, file_url: str) -> bytes:
+    """With the seat token first. The live systems serve these files without one, so a refusal is tried once more without it."""
+    url = settings.base_url.rstrip("/") + "/" + file_url.lstrip("/")
+    try:
+        return _fetch(url, settings.token)
+    except urllib.error.HTTPError as error:
+        if error.code not in (401, 403):
+            raise
+        first = _failure(error)
+    try:
+        return _fetch(url, None)
+    except Exception as error:
+        raise DownloadFailed(f"{first}>no_token_{_failure(error)}") from error
+
+
+class DownloadFailed(Exception):
+    pass
 
 
 @_task("The 20 samples download from the copy and match our copies")
@@ -151,24 +175,36 @@ def samples_on_copy():
     client, settings, _ = _recording_client()
     rows = [row for row in read_all(client, "AcctDocument.list") if SAMPLE_NAME.match(str(row.get("file_name") or ""))]
     folder = Path(tempfile.mkdtemp(prefix="seat29-samples-"))
-    ids, matched, failed = {}, 0, 0
+    # extract reads the platform's own copy of each file, so every listed sample goes to it,
+    # whether or not our download works.
+    by_name: dict[str, dict] = {}
     for row in rows:
-        name = row["file_name"]
-        if name in ids or not str(row.get("file_url") or "").startswith("/"):
-            failed += 1
+        by_name.setdefault(row["file_name"], row)
+    ids = {name: row["id"] for name, row in by_name.items()}
+    downloaded, matched, why = 0, 0, collections.Counter()
+    for name, row in sorted(by_name.items()):
+        if not str(row.get("file_url") or "").startswith("/"):
+            why["no_path"] += 1
             continue
         try:
             data = _download(settings, row["file_url"])
+        except DownloadFailed as error:
+            why[str(error)] += 1
+            continue
         except Exception as error:  # One bad file is counted, not fatal.
-            log(f"download failed for {name}: {type(error).__name__}")
-            failed += 1
+            why[_failure(error)] += 1
             continue
         (folder / name).write_bytes(data)
-        ids[name] = row["id"]
+        downloaded += 1
         matched += hashlib.sha256(data).hexdigest() == EXPECTED.get(name, {}).get("sha256")
     STATE.update(folder=folder, document_ids=ids)
-    evidence = f"listed={len(rows)}; downloaded={len(ids)}; failed={failed}; same_as_ours={matched}/{len(EXPECTED)}"
-    return len(ids) == len(EXPECTED) and matched == len(EXPECTED), evidence
+    if why:
+        log(f"download failures: {dict(sorted(why.items()))}")
+    evidence = (f"listed={len(rows)}; downloaded={downloaded}; failed={sum(why.values())}; "
+                f"same_as_ours={matched}/{len(EXPECTED)}")
+    if why:
+        evidence += "; why=" + ",".join(f"{k}:{v}" for k, v in sorted(why.items()))
+    return downloaded == len(EXPECTED) and matched == len(EXPECTED), evidence
 
 
 @_task("Our reader gives the same results on the copy's samples")
@@ -278,8 +314,9 @@ def readers_compared():
     if not STATE.get("platform"):
         return False, "not tried: extract did not give any results"
     agree, both, platform_missing = collections.Counter(), collections.Counter(), collections.Counter()
+    all_ours = STATE.get("ours") or {}
     for name, doc in STATE["platform"].items():
-        ours = STATE["ours"].get(name, {})
+        ours = all_ours.get(name, {})
         for platform_field, our_field in PLATFORM_TO_OURS.items():
             value = _platform_value(doc.get("intake_fields"), platform_field)
             if value is None:
@@ -290,16 +327,35 @@ def readers_compared():
                 agree[platform_field] += _same_value(value, ours[our_field])
     compared = sum(both.values())
     log(f"platform field missing per field: {dict(platform_missing)}")
-    evidence = "; ".join(f"{field}={agree[field]}/{both[field]}" for field in PLATFORM_TO_OURS)
-    return compared > 0, f"docs={len(STATE['platform'])}; " + evidence
+    docs = len(STATE["platform"])
+    evidence = (f"docs={docs}; ours={len(all_ours)}; platform_fields_found="
+                f"{docs * len(PLATFORM_TO_OURS) - sum(platform_missing.values())}; ")
+    evidence += "; ".join(f"{field}={agree[field]}/{both[field]}" for field in PLATFORM_TO_OURS)
+    return compared > 0, evidence
 
 
 def _pick_clean_bill() -> Optional[str]:
-    for name, doc in sorted(STATE["ours"].items()):
+    for name, doc in sorted((STATE.get("ours") or {}).items()):
         platform = STATE.get("platform", {}).get(name, {})
         if (doc["doc_type"] == "vendor_bill" and not doc["flags"] and doc["proposed_action"] == "draft_bill"
                 and platform.get("intake_fingerprint")):
             return name
+    return None
+
+
+PLATFORM_NAME_FIELDS = ("vendor_name", "counterparty_name", "supplier_name", "party_name")
+
+
+def _from_platform() -> Optional[tuple[str, dict[str, Any], str]]:
+    """When our reader had no files: the first document the platform read in full, with its values as the confirmed ones."""
+    for name, doc in sorted(STATE.get("platform", {}).items()):
+        fields = doc.get("intake_fields")
+        values = {ours: _platform_value(fields, platform) for platform, ours in PLATFORM_TO_OURS.items()}
+        needed = ("invoice_number", "invoice_date", "currency", "total_stated")
+        if doc.get("intake_fingerprint") and all(values[key] is not None for key in needed):
+            vendor = next((v for v in (_platform_value(fields, f) for f in PLATFORM_NAME_FIELDS) if isinstance(v, str)),
+                          "test vendor")
+            return name, values, vendor
     return None
 
 
@@ -309,18 +365,26 @@ def accept_one_draft():
         writes, client, sent = _writes()
     except WriteRefused as refusal:
         return False, f"not tried: {refusal}"
-    name = _pick_clean_bill() if STATE.get("ours") else None
-    if not name:
+    name, source = _pick_clean_bill(), "ours"
+    if name:
+        ours = STATE["ours"][name]
+        vendor_name = ours["counterparty_name"]
+    elif not STATE.get("ours") and _from_platform():
+        # Only when our reader had no files at all: a bill it read and flagged is never accepted.
+        name, ours, vendor_name = _from_platform()
+        source = "platform"
+    else:
         return False, "not tried: no clean vendor bill with a platform fingerprint"
-    ours, document_id = STATE["ours"][name], STATE["document_ids"][name]
+    document_id = STATE["document_ids"][name]
     vendor_id, made_party = STATE.get("vendor_ids", {}).get(name), False
     if not vendor_id:
-        party = writes.call(CREATE_PARTY, {"name": f"{TEST_LABEL} {ours['counterparty_name']}", "type": "organization",
+        party = writes.call(CREATE_PARTY, {"name": f"{TEST_LABEL} {vendor_name}", "type": "organization",
                                            "roles": [{"role": "supplier", "active": True}]}, approved_by=_approver())
         vendor_id, made_party = _id_of(party), True
     confirmed = {"vendor_id": vendor_id, "bill_number": ours["invoice_number"], "date": ours["invoice_date"],
                  "currency_code": ours["currency"], "net_total": ours["subtotal"], "tax_total": ours["tax_total"],
                  "grand_total": ours["total_stated"]}
+    confirmed = {key: value for key, value in confirmed.items() if value is not None}
     if ours.get("due_date"):
         confirmed["due_date"] = ours["due_date"]
     arguments = {"document_id": document_id, "source_fingerprint": STATE["platform"][name]["intake_fingerprint"],
@@ -330,7 +394,7 @@ def accept_one_draft():
     try:
         reply = writes.call(ACCEPT, arguments, approved_by=_approver())
     except ToolError as error:
-        return False, f"accept refused: {error.code}; made_party={made_party}; {error.message[:120]}"
+        return False, f"accept refused: {error.code}; source={source}; made_party={made_party}; {error.message[:120]}"
     after_first = _bill_total(client)
     bill_id = _id_of(reply) or client.call_tool("AcctDocument.get", {"id": document_id}).get("intake_bill_id")
     status = client.call_tool("Bill.get", {"id": bill_id}).get("status") if bill_id else None
@@ -349,7 +413,7 @@ def accept_one_draft():
     log(f"accept reply shape: {_keys(reply)}; repeat: {repeat}")
     passed = (after_first == before + 1 and status == "draft" and after_repeat == after_first
               and submit_refused and "Bill.submit" not in sent and final_status == "draft")
-    evidence = (f"made_party={made_party}; bills={before}->{after_first}->{after_repeat}; status={status}; "
+    evidence = (f"source={source}; made_party={made_party}; bills={before}->{after_first}->{after_repeat}; status={status}; "
                 f"repeat={repeat}; submit_refused={submit_refused}; still_draft={final_status == 'draft'}")
     return passed, evidence
 

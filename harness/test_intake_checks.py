@@ -5,9 +5,12 @@
 The real copy is the only other place these checks can run, so the fake covers
 the shapes the platform's replies might take.
 """
+import io
 import json
 import os
+import tempfile
 import unittest
+import urllib.error
 from unittest import mock
 
 from harness import intake_checks as checks
@@ -15,7 +18,8 @@ from harness import intake_checks as checks
 COPY_URL = "https://copy-1234.example.invalid"
 ENV = {"AGENTSWITCH_TOKEN": "fake-token", "AGENTSWITCH_BASE_URL": COPY_URL, "AGENTSWITCH_INSTANCE": "suryodaya",
        "AGENTSWITCH_RUN_ID": "run-1"}
-LABELS = {"Bill.list": "READ", "Bill.get": "READ", "AcctDocument.get": "READ", "Bill.submit": "POSTING"}
+LABELS = {"Bill.list": "READ", "Bill.get": "READ", "AcctDocument.get": "READ", "AcctDocument.list": "READ",
+          "Bill.submit": "POSTING"}
 
 
 def bill(name="sample_01.pdf", **changes):
@@ -34,7 +38,7 @@ class FakePlatform:
 
     def fields(self):
         values = {"bill_number": "TP/001", "date": "2026-09-25", "due_date": "2026-10-25", "currency_code": "INR",
-                  "net_total": 500, "tax_total": 90, "grand_total": 595}
+                  "net_total": 500, "tax_total": 90, "grand_total": 595, "vendor_name": "Teal Paper Mills"}
         if self.fields_shape == "list":
             return [{"field": key, "value": value, "confidence": 0.9} for key, value in values.items()]
         if self.fields_shape == "string":
@@ -47,6 +51,10 @@ class FakePlatform:
         self.called.append(name)
         if name == "Bill.list":
             return {"total": len(self.bills), "data": []}
+        if name == "AcctDocument.list":
+            rows = [{"id": f"doc-{i}", "file_name": f"sample_{i:02d}.pdf",
+                     "file_url": f"/uploads/accounting/intake-samples/sample_{i:02d}.pdf"} for i in (1, 2)]
+            return {"total": len(rows), "data": rows}
         if name == checks.EXTRACT:
             if self.extract_error:
                 return ("error", self.extract_error)
@@ -82,10 +90,11 @@ class FakePlatform:
 
 
 class WriteCheckTests(unittest.TestCase):
-    def run_checks(self, platform, env=ENV, ours=None):
+    def run_checks(self, platform, env=ENV, ours=None, names=None):
         checks.STATE.clear()
-        ours = ours or [bill(), bill("sample_13.pdf", doc_type="sales_invoice", proposed_action="reject_not_a_bill")]
-        checks.STATE.update(document_ids={doc["source_file"]: f"doc-{i}" for i, doc in enumerate(ours)},
+        ours = [bill(), bill("sample_13.pdf", doc_type="sales_invoice", proposed_action="reject_not_a_bill")]             if ours is None else ours
+        names = names or [doc["source_file"] for doc in ours]
+        checks.STATE.update(document_ids={name: f"doc-{i}" for i, name in enumerate(names)},
                             ours={doc["source_file"]: doc for doc in ours}, vendor_ids={})
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(checks, "_http_transport", lambda settings: platform):
@@ -99,7 +108,7 @@ class WriteCheckTests(unittest.TestCase):
         self.assertIn("bill_number=2/2", compare[1])
         self.assertIn("grand_total=0/2", compare[1])
         self.assertTrue(accept[0], accept[1])
-        self.assertIn("made_party=True", accept[1])
+        self.assertIn("source=ours; made_party=True", accept[1])
         self.assertIn("bills=0->1->1", accept[1])
         self.assertNotIn("Bill.submit", platform.called)
         self.assertEqual(platform.called.count(checks.ACCEPT), 2)
@@ -145,6 +154,58 @@ class WriteCheckTests(unittest.TestCase):
         _, _, accept = self.run_checks(platform, ours=[bill(flags=["total_mismatch"])])
         self.assertIn("not tried", accept[1])
         self.assertNotIn(checks.ACCEPT, platform.called)
+
+
+    def test_without_our_results_extract_runs_and_accept_uses_the_platform_values(self):
+        platform = FakePlatform()
+        extract, compare, accept = self.run_checks(platform, ours=[], names=["sample_01.pdf", "sample_02.pdf"])
+        self.assertTrue(extract[0], extract[1])
+        self.assertIn("extracted=2/2", extract[1])
+        self.assertFalse(compare[0])
+        self.assertIn("ours=0; platform_fields_found=14", compare[1])
+        self.assertTrue(accept[0], accept[1])
+        self.assertIn("source=platform", accept[1])
+        self.assertNotIn("Bill.submit", platform.called)
+
+
+def http_error(code):
+    return urllib.error.HTTPError("https://copy.invalid/x", code, "refused", {}, io.BytesIO(b""))
+
+
+class DownloadTests(unittest.TestCase):
+    def run_samples(self, fetch):
+        checks.STATE.clear()
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        with mock.patch.dict(os.environ, ENV, clear=True),                 mock.patch.object(checks.tempfile, "mkdtemp", lambda prefix: folder.name),                 mock.patch.object(checks, "_http_transport", lambda settings: FakePlatform()),                 mock.patch.object(checks, "_fetch", fetch):
+            return checks.samples_on_copy.run()
+
+    def test_failed_downloads_name_the_status_and_keep_every_document_for_extract(self):
+        def fetch(url, token):
+            raise http_error(404)
+        passed, evidence = self.run_samples(fetch)
+        self.assertFalse(passed)
+        self.assertIn("listed=2; downloaded=0; failed=2", evidence)
+        self.assertIn("why=http_404:2", evidence)
+        self.assertEqual(checks.STATE["document_ids"], {"sample_01.pdf": "doc-1", "sample_02.pdf": "doc-2"})
+
+    def test_a_refused_token_is_tried_once_without_it(self):
+        tokens = []
+
+        def fetch(url, token):
+            tokens.append(token)
+            if token:
+                raise http_error(401)
+            return b"%PDF-1.4"
+        _, evidence = self.run_samples(fetch)
+        self.assertIn("downloaded=2; failed=0", evidence)
+        self.assertEqual(tokens, ["fake-token", None, "fake-token", None])
+
+    def test_both_refusals_are_named(self):
+        def fetch(url, token):
+            raise http_error(401 if token else 403)
+        _, evidence = self.run_samples(fetch)
+        self.assertIn("why=http_401>no_token_http_403:2", evidence)
 
 
 class DigestTests(unittest.TestCase):

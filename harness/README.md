@@ -18,12 +18,12 @@ Checks for the course harness, which runs them on a throwaway copy of each insta
 |---|---|
 | `unit_tests_pass` | All of `29-document-intake/tests` pass on the run's system |
 | `risky_tools_refused` | 14 posting, payment, sending and write tools are refused by the read-only client, none is sent, and the Bill count stays the same |
-| `samples_on_copy` | The 20 course samples download from the copy, and each matches our copy by sha256 |
+| `samples_on_copy` | The 20 course samples download from the copy, and each matches our copy by sha256. A failed download is counted by its HTTP status. If the token is refused, it is tried once more without it, as the live systems serve these files without one |
 | `reader_on_copy_samples` | Our reader gives the same results on them as it does locally, compared by a hash of the scored fields and flags |
 | `vendor_check_on_copy` | The vendor check reads every Party and Bill on the copy and gives each vendor bill a result |
-| `extract_on_copy` | The platform's `extract` runs on each sample through our write path, and creates no Bill |
+| `extract_on_copy` | The platform's `extract` runs on every listed sample through our write path, even if our downloads failed, and creates no Bill |
 | `readers_compared` | For each field, how often the platform's reader and ours agree |
-| `accept_one_draft` | `accept` on one clean vendor bill creates exactly one Bill, as a draft. A retry with the same id creates no second Bill, and `Bill.submit` stays refused |
+| `accept_one_draft` | `accept` on one clean vendor bill creates exactly one Bill, as a draft. A retry with the same id creates no second Bill, and `Bill.submit` stays refused. If our reader had no files at all, it uses the platform's own values for one fully read document, and the evidence says `source=platform` |
 
 ## Writes
 
