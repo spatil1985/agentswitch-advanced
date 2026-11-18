@@ -56,6 +56,8 @@ class FakePlatform:
                      "file_url": f"/uploads/accounting/intake-samples/sample_{i:02d}.pdf"} for i in (1, 2)]
             return {"total": len(rows), "data": rows}
         if name == checks.EXTRACT:
+            if isinstance(self.extract_error, tuple):
+                return self.extract_error
             if self.extract_error:
                 return ("error", self.extract_error)
             self.docs[args["document_id"]] = {"intake_state": "review_required", "intake_fields": self.fields(),
@@ -82,6 +84,9 @@ class FakePlatform:
     def __call__(self, body):
         params = json.loads(body)["params"]
         reply = self.handle(params["name"], params["arguments"])
+        if isinstance(reply, tuple) and reply[0] == "tool_error":
+            content = [{"type": "text", "text": reply[1]}]
+            return 200, json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"content": content, "isError": True}})
         if isinstance(reply, tuple):
             return 200, json.dumps({"jsonrpc": "2.0", "id": 1,
                                     "error": {"code": -32000, "message": "refused", "data": {"code": reply[1]}}})
@@ -148,6 +153,15 @@ class WriteCheckTests(unittest.TestCase):
         self.assertIn("errors=2", extract[1])
         self.assertIn("not tried", accept[1])
         self.assertNotIn(checks.ACCEPT, platform.called)
+
+    def test_the_platform_error_message_is_kept(self):
+        platform = FakePlatform(extract_error=("tool_error", "Document file is not\n available on this instance"))
+        with mock.patch.object(checks, "log") as log:
+            extract, _, _ = self.run_checks(platform)
+        self.assertFalse(extract[0])
+        self.assertIn("first_error=Document file is not available on this instance", extract[1])
+        logged = " ".join(call.args[0] for call in log.call_args_list)
+        self.assertIn("extract error messages: {'Document file is not available on this instance': 2}", logged)
 
     def test_a_flagged_bill_is_never_accepted(self):
         platform = FakePlatform()
