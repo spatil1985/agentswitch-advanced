@@ -197,6 +197,8 @@ class SetupCheck(unittest.TestCase):
         self.addCleanup(os.environ.pop, "OPENAI_API_KEY")
         self.assertEqual(clean(f"bad key {KEY}"), "bad key [hidden]")
 
+    # The harness file lives only on the fork branch the harness runs from, never on main.
+    @unittest.skipUnless((ROOT / "agentswitch-harness.toml").is_file(), "no root harness file on this branch")
     def test_the_harness_file_matches_the_format(self):
         with open(ROOT / "agentswitch-harness.toml", "rb") as handle:
             config = tomllib.load(handle)
