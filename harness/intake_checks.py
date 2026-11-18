@@ -257,7 +257,7 @@ def extract_on_copy():
     except WriteRefused as refusal:
         return False, f"not tried: {refusal}"
     before = _bill_total(client)
-    errors, shapes = collections.Counter(), set()
+    errors, shapes, messages = collections.Counter(), set(), collections.Counter()
     extracted = {}
     for name, document_id in sorted(STATE["document_ids"].items()):
         try:
@@ -266,15 +266,25 @@ def extract_on_copy():
             extracted[name] = client.call_tool("AcctDocument.get", {"id": document_id})
         except ToolError as error:
             errors[error.code] += 1
+            messages[_short(error.message)] += 1
     after = _bill_total(client)
     states = collections.Counter(str(doc.get("intake_state")) for doc in extracted.values())
     STATE["platform"] = extracted
     log(f"extract reply shapes: {sorted(shapes)}; intake_fields shapes: "
         f"{sorted({_keys(d.get('intake_fields')) for d in extracted.values()})}; errors: {dict(errors)}")
+    if messages:
+        log(f"extract error messages: {dict(messages.most_common(3))}")
     evidence = (f"extracted={len(extracted)}/{len(STATE['document_ids'])}; errors={sum(errors.values())}; "
                 f"states={','.join(f'{k}:{v}' for k, v in sorted(states.items()))}; "
                 f"bills_same={before == after}; writes={len(writes.records)}")
+    if messages:
+        evidence += f"; first_error={messages.most_common(1)[0][0]}"
     return bool(extracted) and not errors and before == after, evidence
+
+
+def _short(text: str, limit: int = 160) -> str:
+    """The platform's error text on one line, cut to a length a run log can show."""
+    return " ".join(str(text).split())[:limit] or "(no message)"
 
 
 def _platform_value(fields: Any, name: str) -> Any:
