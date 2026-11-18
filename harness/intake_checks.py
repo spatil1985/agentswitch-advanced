@@ -152,7 +152,7 @@ def _failure(error: Exception) -> str:
 
 
 def _download(settings, file_url: str) -> bytes:
-    """With the seat token first. The live systems serve these files without one, so a refusal is tried once more without it."""
+    """With the seat token first. If that token is refused, try once more without it."""
     url = settings.base_url.rstrip("/") + "/" + file_url.lstrip("/")
     try:
         return _fetch(url, settings.token)

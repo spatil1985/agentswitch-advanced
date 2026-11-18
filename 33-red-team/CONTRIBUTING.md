@@ -47,8 +47,11 @@ Harness runs by the Eval-Harness seat use a throwaway copy of the instance, so 2
 
 ## Evidence and redaction
 The repository is public.
+- **No exploit detail for bugs or possible findings** (instructor, 11 Nov 2026). For each bug or possible finding, the public files (catalogue, `findings/`, `replay/`, `docs/`, `PLAN.md`, READMEs, PR and issue text) keep only the **title, the affected component and the fix status**. Steps, tool calls, requests, responses and returned field names are kept on the harness copy only and in the report filed in the app ("Report a problem").
+  - In `findings/`, Steps and Evidence say "In the full report filed in the app", and Actual says only what was returned, with no fields or ids (see `findings/BUG-33-001.md`).
+  - Suite tasks that track a known bug (Tasks 9–10) must make the call to check it. Keep their comments and evidence to the title, component and status.
 - Truncate internal ids to the first 8 characters (`1a2b3c4d…`). Use placeholders like `<suryodaya-company-id>`.
-- Describe the shape of returned data (field names, counts); do not paste records.
+- For other results (Held, Unclear), describe the shape of returned data (counts, field names); do not paste records.
 - No platform source code, schemas, database files, or screenshots of internal screens.
 - Raw run output (`results.json`) stays local and is git-ignored. Commit only a redacted sample (`replay/sample-results.json`).
 

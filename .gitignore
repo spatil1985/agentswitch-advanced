@@ -9,5 +9,3 @@ __pycache__/
 node_modules/
 .venv/
 .DS_Store
-results.json
-__pycache__/

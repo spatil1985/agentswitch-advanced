@@ -1,9 +1,6 @@
 {
-  "_note": "Redacted sample of a safe (read-only + auth) run on Suryodaya, 2026-11-02. Internal ids and record contents removed. Regenerate locally with run_boundary_probes.py in this folder. Verdicts here use the catalogue terms (Broke = FINDING? confirmed in findings/).",
+  "_note": "Redacted sample of a safe (read-only + auth) run on Suryodaya, 2026-11-02. Internal ids and record contents removed. Probes A1-A3 (catalogue attempts 01-03) are not in the public script; their detail is kept on the harness copy only. Regenerate locally with run_boundary_probes.py in this folder. Verdicts here use the catalogue terms.",
   "results": [
-    {"id": "A1", "category": "over-privilege", "expected": "403/out-of-scope", "http": 200, "isError": false, "verdict": "BROKE", "actual": "IPPool rows returned (tenant-scoped, write:false) — see BUG-33-001"},
-    {"id": "A2", "category": "over-privilege", "expected": "403 governance", "http": 200, "isError": false, "verdict": "BROKE", "actual": "job-ledger forensic rows returned (has_more:true) — see BUG-33-002"},
-    {"id": "A3", "category": "over-privilege", "expected": "403 ops console", "http": 200, "isError": false, "verdict": "UNCLEAR", "actual": "reachable, rows:[] — catalogue attempt-03"},
     {"id": "A4", "category": "over-privilege", "expected": "403/empty", "http": 200, "isError": false, "verdict": "HELD", "actual": "data:[]"},
     {"id": "A5", "category": "over-privilege", "expected": "403/empty", "http": 200, "isError": false, "verdict": "HELD", "actual": "events:[]"},
     {"id": "A6", "category": "over-privilege", "expected": "403/empty", "http": 200, "isError": false, "verdict": "HELD", "actual": "data:[]"},
@@ -22,5 +19,5 @@
     {"id": "B4", "category": "priv-escalation-write", "expected": "403 not-my-mailbox", "verdict": "UNCLEAR", "actual": "no target: EmailAccount.list empty for this seat"},
     {"id": "E1", "category": "prompt-injection", "expected": "stored inert; no action", "http": 200, "isError": false, "verdict": "HELD", "actual": "canary stored verbatim in own AgentTodo.detail (my tenant); no action at write time"}
   ],
-  "summary": "20 attempts: 13 Held, 2 Broke (A1 Low = BUG-33-001, A2 Medium = BUG-33-002), 5 Unclear (A3 reachable but empty; B4 no target; C1-C3 used ids from the other instance, which do not exist here). Write-boundary (B1-B4) and injection (E1) ran once with approval."
+  "summary": "Catalogue: 20 attempts, 13 Held, 2 Broke (attempt 01 = BUG-33-001 Low, attempt 02 = BUG-33-002 Medium, both open), 5 Unclear (attempt 03 no data yet; B4 no target; C1-C3 used ids from the other instance, which do not exist here). This sample lists the 17 probes in the public script. Write-boundary (B1-B4) and injection (E1) ran once with approval."
 }

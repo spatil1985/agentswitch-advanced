@@ -1,0 +1,8 @@
+# Seat 33 (Red Team) v1 suite, in the format of 34-eval-harness/TASK_FORMAT.md.
+# The course runner expects this file at a repository root. It stays in the seat
+# folder until the instructor answers PLAN.md open question 1 (same as seat 34).
+install = "pip install -r requirements.txt"
+run     = "python -m harness.runner --out results.json"
+results = "results.json"
+instances = ["suryodaya", "keystone"]
+timeout_minutes = 10

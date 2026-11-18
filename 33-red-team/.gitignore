@@ -1,4 +1,5 @@
 # never commit raw run output (may hold unredacted tenant data) or caches
 **/results.json
+**/scope_sweep_results*.json
 __pycache__/
 *.pyc

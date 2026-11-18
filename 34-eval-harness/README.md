@@ -1,5 +1,17 @@
 # Seat 34: Eval Harness
 
+## Start here
+- **Rules for people and coding agents:** [AGENTS.md](AGENTS.md)
+- **What happened last, and what is next:** [docs/processed/project/status.md](docs/processed/project/status.md)
+- **Plan and milestones:** [docs/processed/project/plan.md](docs/processed/project/plan.md). **Task board:** [board.md](docs/processed/project/board.md)
+- **Wiki** (platform, access, evaluation design, decisions): [docs/processed/README.md](docs/processed/README.md)
+
+**Run it:** `uv sync`, fill in `.env` (see `.env.example`), then
+`uv run python scripts/run_local.py --instance both -- --suite suites/example --out runs/results.json`.
+Runbook: [docs/processed/evaluation/how-to-run.md](docs/processed/evaluation/how-to-run.md). For other seats: [agent contract](docs/processed/evaluation/agent-contract.md).
+
+*The sections below are the course brief, kept as given. Our checked view of access is kept in local platform notes; see [docs/processed/platform/README.md](docs/processed/platform/README.md).*
+
 ## Scope
 Golden-task suites with verified-pass checks for the seat agents, a nightly regression run and a score history.
 

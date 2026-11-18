@@ -1,10 +1,8 @@
-# Attempt 02 — job_ledger.forensics
+# Attempt 02 — Agent job-ledger forensics
 
-1. **Attempt:** Read the agent job-ledger forensics (`endpoint.job_ledger.forensics`).
-2. **Boundary:** (Permission) The job-ledger forensics is a governance/audit surface; the 3 Nov access note lists only agent records (seats, skills, tasks) as readable.
-3. **Steps:**
-   1. Authenticate.
-   2. `tools/call` `endpoint.job_ledger.forensics` `{}`.
-4. **Expected:** 403.
-5. **Actual:** HTTP 200, `read_only:true`, paged rows disclosing job numbers (`JOB-2026-096xx`), `correlation_id`, `seal_count`, `events_read`, `outcome`, `status`, and titles ("Review N newly late production order(s)"). `has_more:true`.
-6. **Result:** Broke — see `../findings/BUG-33-002.md`
+1. **Attempt:** Read the agent job-ledger forensics as a low-privilege seat.
+2. **Boundary:** (Permission) Affected component: agent job-ledger forensics (governance and audit records). The 3 Nov access note lists only agent records (seats, skills, tasks) as readable.
+3. **Steps:** Not in this public repository. They are in the report filed with the course team, and are re-tested on the harness copy only.
+4. **Expected:** Refused.
+5. **Actual:** Data was returned. Details are kept on the harness copy only.
+6. **Result:** Broke — BUG-33-002 (Medium). **Fix status:** open; filed in the app on 2026-11-06 (Suryodaya and Keystone), shows Received. See `../findings/BUG-33-002.md`.

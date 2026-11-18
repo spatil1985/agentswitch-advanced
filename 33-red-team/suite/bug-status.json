@@ -1,0 +1,11 @@
+{
+  "_note": "Status of each Seat 33 bug, read by tasks 9 and 10 at run time. Keep it in step with the bug list in PLAN.md. Allowed values: new, open, fixed, wont_fix.",
+  "BUG-33-001": {
+    "status": "new",
+    "filed": "2026-11-06, Suryodaya, in the app (Report a problem); shows Received"
+  },
+  "BUG-33-002": {
+    "status": "new",
+    "filed": "2026-11-06, Suryodaya and Keystone, in the app (Report a problem); shows Received"
+  }
+}

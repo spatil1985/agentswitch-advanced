@@ -1,0 +1,7 @@
+# Course runner file (see TASK_FORMAT.md). Kept in the seat folder until instructor question Q1 is answered
+# (decision 0006). The run has no internet, so packages come from uv.lock during the install step.
+install = "pip install uv && uv sync --frozen --no-dev"
+run     = "uv run --frozen --no-sync python -m eval_harness --suite suites/example --out results.json"
+results = "results.json"
+instances = ["suryodaya", "keystone"]
+timeout_minutes = 20
